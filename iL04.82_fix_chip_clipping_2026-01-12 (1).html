@@ -1,0 +1,5745 @@
+<!doctype html>
+<html lang="en" class="guard-wait">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="format-detection" content="telephone=no,email=no,address=no" />
+  <title>House List</title>
+  <style>
+    :root{
+      --attn: #A04A2A;
+      --attn-bg: rgba(160,74,42,.18);
+      --attn-ink: rgba(160,74,42,.96);
+      --paper:#f7f2e8;
+      --paper-rgb:247,242,232;
+      --ink:#2b2b2b;
+      --muted:#6a6a6a;
+      --line:rgba(0,0,0,.09);
+      --chip:rgba(0,0,0,.05);
+      --chip2:rgba(0,0,0,.10);
+      --primary:rgba(0,0,0,.12);
+      --radius:16px;
+      --shadow:0 10px 40px rgba(0,0,0,.18);
+
+      --ok:#2eea4b;
+      --ok-bg:rgba(46,234,75,.18);
+  --card: #f2ece1;
+
+  --surface-1: var(--card);
+  --surface-2: rgba(0,0,0,.035);
+}
+    *{ box-sizing:border-box; }
+    #tapShield{position:fixed;inset:0;z-index:40;display:none;background:transparent;touch-action:none;}
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background:var(--paper);
+      color:var(--ink);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      overflow-x:hidden;
+      overscroll-behavior-x:none;
+    }
+    .app{ max-width:920px; margin:0 auto; --appPad:14px; padding:var(--appPad) var(--appPad) 110px; }
+
+    /* Full-bleed helper (still respects the centered max-width container) */
+    .bleedX{
+      margin-left:calc(-1 * var(--appPad));
+      margin-right:calc(-1 * var(--appPad));
+      padding-left:var(--appPad);
+      padding-right:var(--appPad);
+    }
+
+    /* Top bar */
+    header{
+      position:sticky; top:0; z-index:5;
+      background:linear-gradient(to bottom, rgba(var(--paper-rgb),.98) 70%, rgba(var(--paper-rgb),0));
+      backdrop-filter:saturate(1.2) blur(6px);
+      padding:10px 0 12px;
+    }
+    .top{
+      display:flex; align-items:center; justify-content:space-between; gap:9px;
+      border:1px solid var(--line);
+      border-radius:28px;
+      background:rgba(255,255,255,.22);
+      padding:8px;
+    }
+    .brand{ display:none; }
+    .brand .t{ font-size:13px; font-weight:700; letter-spacing:.2px; }
+    .brand .s{ font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .nav{
+      display:flex;
+      align-items:center;
+      gap:9px;
+
+      /* Critical: expand nav so the filter dots can occupy the left empty space */
+      flex:1 1 auto;
+      min-width:0;
+    }
+    /* Push the Items/Setup tabs to the far right */
+    .tabs{
+      margin-left:auto;
+      display:flex;
+      gap:8px;
+    }
+
+    /* Store filter dots (single-select; tap again clears) */
+    .storeFilters{
+      display:flex;
+	      /* tighter spacing so 7 chips fit on common mobile widths */
+	      gap:6px;
+      align-items:center;
+	      padding-left:4px;
+	      padding-right:4px;
+	      max-width:none;
+	      overflow:hidden;
+	      flex:1 1 auto;
+	      min-width:0;
+      scrollbar-width:none;
+	
+	      /* note: we intentionally do NOT allow horizontal scrolling.
+	         The app shows up to 7 store chips in this rail. */
+    }
+
+	    .storeFilters::after{ display:none; }
+
+    .storeFilters::-webkit-scrollbar{ display:none; }
+
+	    .storeDot{
+	      width: 28px; height: 28px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,.18);
+      box-shadow:0 1px 0 rgba(255,255,255,.35) inset;
+      flex:0 0 auto;
+      margin-right:0px;
+      cursor:pointer;
+      user-select:none;
+      position:relative;
+      opacity:1;
+    }
+    .storeDot.off{ opacity:.35; }
+        .storeDot.empty{ opacity:.18; filter:grayscale(1); }
+.storeDot::before{
+      content:'';
+      position:absolute;
+      left:-7px; right:-7px; top:-7px; bottom:-7px;
+}
+    .storeFilters .storeDot:last-child{ margin-right:0; }
+    .storeDot.on{
+      border-color:rgba(0,0,0,.32);
+      opacity:1; filter:none;
+    }
+    .storeDot.on::after{
+      content:"";
+      position:absolute;
+      inset:-4px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,.12);
+    }
+
+    .tab{
+      appearance:none;
+      border:1px solid transparent;
+      background:transparent;
+      color:var(--ink);
+      padding:9px 12px;
+      border-radius:14px;
+      font-size:13px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .tab.active{
+      border-color:rgba(0,0,0,.16);
+      background:rgba(0,0,0,.06);
+    }
+    .tab:active{ transform:translateY(1px); }
+
+    /* Pages */
+    .page{ display:none; }
+    .page.show{ display:block; }
+
+    /* Lists */
+    .section{ padding:12px 2px 6px; }
+    .h{
+      display:flex; align-items:center; justify-content:space-between; gap:0px;
+      padding:6px 4px 10px;
+      border-bottom:1px solid var(--line);
+    }
+.hRight{display:flex;align-items:center;gap:8px;}
+.miniAction{border:1px solid rgba(0,0,0,.18);background:rgba(255,255,255,.55);padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px;line-height:1;box-shadow:0 1px 0 rgba(0,0,0,.04);}
+.miniIcon{border:1px solid rgba(0,0,0,.18);background:rgba(255,255,255,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:10px;height:28px;min-width:38px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:700;color:rgba(0,0,0,.78);font-size:12px;line-height:1;box-shadow:0 1px 0 rgba(0,0,0,.04);}
+.miniIcon svg{width:18px;height:18px;display:block;}
+
+.miniAction:active{transform:translateY(1px);}
+
+    .h .title{ font-size:16px; font-weight:700; letter-spacing:.1px; }
+    .h .meta{ font-size:12px; color:var(--muted); }
+    .list{ display:flex; flex-direction:column; gap:4px; padding:10px 0 0; }
+#itemsList{padding-bottom:200px;}
+
+
+    /* Mobile-first sizing (more readable, better tap targets) */
+    .row{
+      display:flex; align-items:center; justify-content:space-between; gap:9px;
+      padding:14px 12px;
+      border-radius:16px;
+      cursor:pointer; user-select:none;
+    }
+    .row:hover{ background:rgba(0,0,0,.02); }
+
+    .row.subRow{
+      padding:10px 12px;
+      padding-left:52px; /* align under item name (after pill) */
+      border-radius:14px;
+      background:rgba(0,0,0,.015);
+    }
+    .row.subRow:hover{ background:rgba(0,0,0,.02); }
+    .row.subRow .pill{ display:none; }
+    .row.subRow .name{
+      font-size:14px;
+      color:rgba(0,0,0,.70);
+    }
+    .row.subRow .tools{ display:flex; align-items:center; gap:8px; }
+
+    .left{ display:flex; align-items:center; gap:9px; min-width:0; }
+    .pill{
+      width:24px; height:24px; border-radius:8px;
+      border:1px solid rgba(0,0,0,.22);
+      background:transparent;
+      display:grid; place-items:center;
+      font-size:16px; line-height:1;
+      flex:0 0 auto;
+      margin-right:10px;
+      position:relative;
+    }
+    .name{
+      font-size:16px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+
+    .nameWrap{ display:flex; align-items:center; gap:8px; min-width:0; }
+    .qtyBadge{
+      font-size:13px;
+      font-weight:800;
+      letter-spacing:.2px;
+      height:28px;
+      padding:0 9px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,.14);
+      background:rgba(255,255,255,.35);
+      color:rgba(0,0,0,.58);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      line-height:1;
+      flex:0 0 auto;
+    }
+    .tripRow .qtyBadge{ background:rgba(255,255,255,.30); }
+    .varBadge{
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.15px;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,.14);
+      background:rgba(255,255,255,.28);
+      color:rgba(0,0,0,.58);
+      flex:0 1 auto;
+      max-width:160px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .tripRow .varBadge{ background:rgba(255,255,255,.26); }
+
+    .small{
+      font-size:13px; color:var(--muted);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      max-width:70vw;
+      flex:0 0 auto;
+      margin-right:10px;
+    }
+    /* Notes (long-press to add; icon shows only when a note exists) */
+    .tools{ display:none; align-items:center; gap:8px; flex:0 1 auto; max-width:55%; margin-right:-8px; }
+    .row.hasNote .tools{ display:flex; }
+
+    .noteBtn{
+      border:1px solid rgba(0,0,0,.18);
+      background:rgba(255,255,255,.35);
+      color:rgba(0,0,0,.55);
+      border-radius:10px;
+      height:28px;
+      min-width:38px;
+      padding:0 10px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+      flex:0 0 auto;
+    }
+    .tripRow .noteBtn{ background:rgba(255,255,255,.35); }
+    .noteBtn svg{ width:20px; height:18px; display:block; opacity:1; }
+    .noteBtn:active{ transform:translateY(1px); }
+
+    /* Attention pin */
+    .attnPin{
+      border:1px solid rgba(160,74,42,.32);
+      background:var(--attn-bg);
+      color:var(--attn-ink);
+      border-radius:10px;
+      height:28px;
+      min-width:28px;
+      padding:0 10px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      letter-spacing:.2px;
+      line-height:1;
+      flex:0 0 auto;
+    }
+
+    /* Make Go-page ! act like a button but look identical to the span version */
+    .goBang{ cursor:pointer; user-select:none; -webkit-tap-highlight-color: transparent; }
+    .goBang:active{ transform:translateY(1px); }
+
+    /* Note modal attention toggle (placed next to Save) */
+    .noteActionsRight{ display:flex; align-items:center; gap:10px; margin-left:auto; }
+    .noteActionsRight .btn{ margin-right:0; }
+    .btn.attnBtn{
+      border:2px solid rgba(160,74,42,.42);
+      background:rgba(160,74,42,.10);
+      color:var(--attn-ink);
+      font-weight:900;
+      width:56px;
+      height:46px;
+      padding:0;
+      border-radius:20px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:16px;
+      line-height:1;
+      letter-spacing:.3px;
+    }
+    .btn.attnBtn.on{
+      background:rgba(160,74,42,.34);
+      border-color:rgba(160,74,42,.82);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.25),
+        0 2px 8px rgba(160,74,42,.18);
+    }
+
+
+    /* Quantity stepper (inside Note modal) */
+    .qtyRow{ display:flex; align-items:center; gap:10px; margin:2px 0 10px; }
+    .qtyBtn{
+      appearance:none;
+      border:1px solid rgba(0,0,0,.14);
+      background:rgba(0,0,0,.04);
+      color:var(--ink);
+      width:40px; height:34px;
+      border-radius:12px;
+      font-size:18px;
+      font-weight:900;
+      line-height:1;
+      padding:0;
+      cursor:pointer;
+      user-select:none;
+      flex:0 0 auto;
+    }
+    .qtyBtn:active{ transform:translateY(1px); }
+    .qtyVal{
+      min-width:62px;
+      text-align:center;
+      font-weight:900;
+      letter-spacing:.3px;
+      border:1px solid rgba(0,0,0,.14);
+      background:rgba(255,255,255,.35);
+      border-radius:999px;
+      padding:7px 10px;
+      font-size:14px;
+      flex:0 0 auto;
+    }
+    .qtyLbl{ margin-left:auto; font-size:12px; color:var(--muted); }
+    /* Note modal layout tweaks: Clear button on top, Qty in footer */
+    .topActions{ display:flex; align-items:center; justify-content:flex-start; margin:2px 0 10px; }
+    .mFoot .qtyRow{ margin:0; }
+    .mFoot .qtyLbl{ display:none; }
+
+
+    .row.selected .pill{
+      background:var(--ok-bg);
+      border-color:rgba(46,234,75,.95);
+      box-shadow:
+        inset 0 0 0 1px rgba(46,234,75,.35),
+        0 0 0 1.5px rgba(0,0,0,.65);
+    }
+    .row.selected .pill::before{
+      content:"✓";
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-52%);
+      color:rgba(0,0,0,.70);
+      font-weight:900;
+      font-size:15px;
+      line-height:1;
+    }
+    .row.selected .pill::after{
+      content:"✓";
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-52%);
+      color:var(--ok);
+      font-weight:900;
+      font-size:14.5px;
+      line-height:1;
+    }
+
+    /* Store dot */
+    .dot{
+      width:10px; height:10px; border-radius:50%;
+      border:1px solid rgba(0,0,0,.14);
+      background:#ddd;
+      flex:0 0 auto;
+      margin-right:10px;
+    }
+
+    /* Trip store blocks */
+    .store{
+      border-top:1px solid var(--line);
+      padding:10px 0 6px;
+    }
+
+    /* Go page: non-active stores sit inside ONE subdued "collapsed region" (theme-safe via surface tokens) */
+    .collapsedStores{
+  margin-top:12px;
+  /* Full-bleed dim region (matches app side padding) */
+  margin-left:calc(-1 * var(--appPad));
+  margin-right:calc(-1 * var(--appPad));
+  padding:10px var(--appPad) calc(env(safe-area-inset-bottom) + 120px);
+  background:var(--surface-2);
+  border-radius:0;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+/* Trip mode: dim non-essential chrome, keep active store as the focal area */
+
+body.tripMode{
+  /* Height of the GO header chrome (header + trip bar). Set via JS for perfect coverage. */
+  --tripChromeH: 0px;
+}
+body.tripMode::before{
+  content:"";
+  position:fixed;
+  left:0; right:0; top:0;
+  height:var(--tripChromeH);
+  background:var(--surface-2);
+  pointer-events:none;
+  z-index:0;
+}
+/* Ensure chrome sits above the tint plane */
+body.tripMode header,
+body.tripMode #pageTrip .h{
+  position:relative;
+  z-index:2;
+  background:transparent !important;
+  border-bottom-color:transparent;
+}
+body.tripMode header{
+  border-bottom-color:transparent;
+  margin-left:calc(-1 * var(--appPad));
+  margin-right:calc(-1 * var(--appPad));
+  padding-left:var(--appPad);
+  padding-right:var(--appPad);
+}
+body.tripMode #pageTrip .h{
+  border-bottom-color:transparent;
+  margin-left:calc(-1 * var(--appPad));
+  margin-right:calc(-1 * var(--appPad));
+  padding-left:var(--appPad);
+  padding-right:var(--appPad);
+}
+body.tripMode #pageTrip .section{
+  min-height:calc(100vh - 140px);
+  display:flex;
+  flex-direction:column;
+}
+body.tripMode #tripStores{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+
+    /* Inside the collapsed region, individual store blocks should not look like separate cards */
+    .collapsedStores .store{
+      background:transparent;
+      border:none;
+      margin:0;
+      padding:0;
+      border-top:none;
+    }
+    .collapsedStores .storeHead{
+      padding:10px 2px;
+    }
+
+    /* Active store remains fully open and unboxed */
+    .store.open{ background:transparent; border:none; margin:0; }
+.storeHead{
+      display:flex; align-items:center; justify-content:space-between; gap:0px;
+      padding:6px 2px 10px;
+      cursor:pointer;
+    }
+    .storeHead .l{
+      display:flex; align-items:center; gap:0px; min-width:0;
+    }
+    .storeName{ font-size:16px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .count{
+      font-size:12px; color:var(--muted);
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.20);
+      padding:3px 8px;
+      border-radius:999px;
+      flex:0 0 auto;
+      margin-right:0; margin-left:10px;
+    }
+    .chev{ color:var(--muted); padding:2px 6px; border-radius:10px; }
+    .store.open .chev{ color:var(--ink); }
+    .groups{ padding-left:22px; display:none; }
+    .store.open .groups{ display:block; }
+    .gTitle{
+      font-size:12px;
+      color:var(--muted);
+      letter-spacing:.2px;
+      padding:12px 8px 6px;
+    }
+    /* Go page: small visual separation between former filter groups (no headings) */
+    .typeGap{ height:10px; }
+    .tripRow .pill{ border-radius:999px; width:14px; height:14px; border-radius:6px; }
+    .tripRow.checked .name{ color:rgba(43,43,43,.45); text-decoration:line-through; }
+    .tripRow.checked{ opacity:.72; }
+
+
+    /* Setup layout (rebuilt to be phone-safe and consistent) */
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:9px;
+      align-items:start;
+    }
+    @media (max-width: 820px){
+      .grid{ grid-template-columns:1fr; }
+    }
+
+    .card{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.20);
+      border-radius:28px;
+      padding:12px;
+      max-width:100%;
+      overflow:hidden;
+    }
+    .card h3{
+      margin:0 0 10px;
+      font-size:13px; letter-spacing:.1px; font-weight:800;
+    }
+
+    .fieldRow{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      max-width:100%;
+      flex-wrap:wrap; /* wraps only if truly needed */
+    }
+    .fieldRow > *{ min-width:0; }
+    /* Inputs must be shrinkable inside flex rows to avoid pushing buttons off-screen */
+    .fieldRow input[type="text"]{
+      width:auto !important;
+      flex:1 1 220px;
+      min-width:0;
+      max-width:100%;
+    }
+
+    input[type="text"], textarea{
+      width:100%;
+      max-width:100%;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.30);
+      padding:10px 12px;
+      border-radius:14px;
+      font-size:16px; /* prevents mobile auto-zoom on focus */
+      color:var(--ink);
+      outline:none;
+      box-sizing:border-box;
+    }
+    input[type="text"]:focus, textarea:focus{
+      border-color:rgba(0,0,0,.22);
+      background:rgba(255,255,255,.42);
+    }
+
+    .btn{
+      appearance:none;
+      border:1px solid rgba(0,0,0,.14);
+      background:rgba(0,0,0,.04);
+      color:var(--ink);
+      padding:10px 12px;
+      border-radius:14px;
+      font-size:13px;
+      cursor:pointer;
+      user-select:none;
+      flex:0 0 auto;
+      margin-right:10px;
+      white-space:nowrap;
+    }
+    .btn.primary{
+      border-color:rgba(0,0,0,.16);
+      background:rgba(0,0,0,.08);
+      font-weight:700;
+    }
+    
+    /* Confirm / advance buttons: green outline (directional language) */
+    .btn.confirmGreen{
+      border-color: rgba(70, 140, 95, 0.60);
+      background: rgba(174, 230, 186, 0.22);
+      color: rgba(0,0,0,0.78);
+      font-weight: 800;
+      width: 86px;
+      height: 46px;
+      padding: 0;
+      border-width: 2px;
+      border-style: solid;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+.cancelRed{
+  padding: 12px 22px;
+  border-radius: 16px;
+  border: 2px solid rgba(192,57,43,.92);
+  background: transparent;
+  color: rgba(192,57,43,.92);
+  font-weight: 800;
+  letter-spacing: .2px;
+  box-shadow: none;
+}
+.cancelRed:active{ transform: translateY(1px); }
+    .btn.confirmGreen:active{ transform: translateY(1px); }
+.btn.danger{
+      border-color:rgba(176,0,32,.20);
+      background:rgba(176,0,32,.06);
+      color:rgba(176,0,32,.92);
+    }
+    .btn:active{ transform:translateY(1px); }
+
+    .miniBtn{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.03);
+      padding:7px 10px;
+      border-radius:12px;
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .miniBtn:active{ transform:translateY(1px); }
+
+    .orderBtn{
+      appearance:none;
+      border:1px solid rgba(0,0,0,.14);
+      background:rgba(255,255,255,.42);
+      color:rgba(0,0,0,.68);
+      width:46px;
+      height:38px;
+      border-radius:14px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:0;
+      cursor:pointer;
+      user-select:none;
+      box-shadow:0 1px 0 rgba(0,0,0,.04);
+    }
+    .orderBtn svg{ width:20px; height:20px; display:block; }
+    .orderBtn:active{ transform:translateY(1px); }
+
+    .actions{
+      display:flex;
+      gap:6px;
+      align-items:center;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+      max-width:100%;
+    }
+
+    .rowChevron{
+      color: var(--muted);
+      font-size: 22px;
+      line-height: 1;
+      padding: 6px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.06);
+      background: rgba(255,255,255,0.35);
+      user-select:none;
+    }
+    .sheetActions{
+      display:flex;
+      gap:10px;
+      padding: 0 18px 12px;
+      justify-content:flex-start;
+    }
+    .sheetActions .miniBtn{ padding: 8px 14px; }
+
+    .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+    .chip{
+      border:1px solid var(--line);
+      background:var(--chip);
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:13px;
+      cursor:pointer;
+      user-select:none;
+      display:flex; align-items:center; gap:8px;
+      max-width:100%;
+    }
+    .chip.selected{
+      border-color:rgba(0,0,0,.30);
+      background:rgba(0,0,0,.12);
+    }
+    .chip .miniDot{
+      width:8px; height:8px; border-radius:50%;
+      border:1px solid rgba(0,0,0,.14);
+      background:#ddd;
+    }
+    .chipX{
+      margin-left:2px;
+      font-weight:900;
+      opacity:.58;
+      border:1px solid rgba(0,0,0,.10);
+      background:rgba(255,255,255,.35);
+      border-radius:999px;
+      width:18px; height:18px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      line-height:1;
+      flex:0 0 auto;
+      user-select:none;
+    }
+    .muted{ color:var(--muted); font-size:12px; }
+
+    /* Item editor modal */
+    .overlay{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.28);
+      display:none;
+      padding:12px;
+      z-index:50;
+    }
+
+    /* Modal/overlay scroll lock + safe touch handling (prevents scrolling the list behind) */
+    .overlay.show{ display:block; }
+     
+    /* Review modal should scroll internally */
+    #goReviewOverlay .modal{
+      max-height:80vh;
+      display:flex;
+      flex-direction:column;
+    }
+    #goReviewOverlay .mBody{
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+      overscroll-behavior:contain;
+    }
+    /* Prevent overscroll chaining on completion/confirm/review overlays */
+    #goCompleteOverlay, #goConfirmOverlay, #goReviewOverlay{
+      overscroll-behavior:contain;
+    }
+.modal{
+      max-width:920px;
+      margin:0 auto;
+      background:var(--paper);
+      border:1px solid rgba(0,0,0,.14);
+      border-radius:28px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .mHead{
+      display:flex; align-items:center; justify-content:space-between; gap:0px;
+      padding:12px;
+      border-bottom:1px solid var(--line);
+    }
+    .mHead .t{ font-size:13px; font-weight:800; }
+    .mBody{ padding:12px; display:flex; flex-direction:column; gap:9px; }
+    .mFoot{
+      display:flex; align-items:center; justify-content:space-between; gap:0px; flex-wrap:wrap;
+      padding:12px;
+      border-top:1px solid var(--line);
+    }
+
+    /* FAB */
+    .fab{
+      position:fixed;
+      right:16px;
+      bottom:16px;
+      z-index:10;
+      width:92px; height:92px;
+      border-radius:28px;
+      /* Softer "paper-friendly" Go button to match selection vibe */
+      border:1px solid rgba(0,0,0,.22);
+      background:rgba(46,234,75,.28);
+      box-shadow:
+        0 10px 26px rgba(0,0,0,.12),
+        inset 0 0 0 1px rgba(46,234,75,.28);
+      display:none;
+      cursor:pointer;
+      user-select:none;
+    }
+    .fab.show{ display:grid; place-items:center; }
+
+.typeFilterFab{
+  position:fixed;
+  right:16px;
+  bottom:118px; /* sits just above Go button */
+  z-index:26;
+  display:none;
+  pointer-events:auto;
+}
+.typeFilterFab.show{ display:block; }
+.typeFilterBtn{display:flex;align-items:center;justify-content:space-between;gap:10px;height:46px;min-width:92px;max-width:180px;padding:0 14px 0 16px;border-radius: 18px;border:1px solid rgba(0,0,0,0.16);background:rgba(249,245,236,0.96);box-shadow:0 10px 22px rgba(0,0,0,0.10);font-weight:800;letter-spacing:.2px;}
+
+.typeFilterCaret{
+  margin-left:10px;
+  font-size:16px;
+  line-height:1;
+  opacity:.55;
+  border:none;
+  width:auto;
+  height:auto;
+  transform:none;
+  display:inline-block;
+}
+.typeFilterBtn:active{ transform: translateY(1px); }
+
+/* Trip Paper/Back mini button (beneath Share in Trip view) */
+.tripPaperFab{
+  position:fixed;
+  right:16px;
+  bottom:16px; /* stacked BELOW the Share FAB, matching Go/Filter spacing */
+  z-index:26;
+  display:none;
+  pointer-events:auto;
+}
+/* Trip FAB stacking: keep Share above Paper (consistent with item Go/Filter pair) */
+body.tripMode #tripFab{ bottom:72px; }
+
+.tripPaperFab.show{ display:block; }
+
+body:not(.tripMode) .tripPaperFab{ display:none !important; }
+
+.paperMiniBtn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width: 86px;
+  height: 46px;
+  border-radius: 18px;
+  border: 1px solid rgba(0,0,0,0.16);
+  background: rgba(249,245,236,0.96);
+  box-shadow:0 10px 22px rgba(0,0,0,0.10);
+  -webkit-tap-highlight-color: transparent;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: .2px;
+  color: rgba(0,0,0,0.74);
+  text-transform: none;
+}
+
+.paperMiniBtn svg{
+  width: 22px;
+  height: 22px;
+  stroke: rgba(0,0,0,.62);
+  stroke-width: 2.6;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.paperMiniBtn:active{ transform: translateY(1px); }
+
+/* Paper Mode overlay */
+.paperOverlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:55;
+  background:var(--paper);
+  padding:14px;
+  overflow:auto;
+}
+body.paperMode .paperOverlay{ display:block; }
+body.paperMode .fab, body.paperMode .tripPaperFab{ z-index: 60; }
+
+.paperSheet{
+  max-width:920px;
+  margin:0 auto;
+}
+.paperList{
+  margin-top:10px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.paperGroup{
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background: rgba(0,0,0,.02);
+}
+.paperGroup .gTitle{
+  font-weight:900;
+  font-size:12px;
+  letter-spacing:.2px;
+  opacity:.65;
+  margin:0 0 6px 0;
+}
+.paperItem{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  padding:6px 0;
+  border-top:1px dashed rgba(0,0,0,.09);
+}
+.paperItem:first-of-type{ border-top:none; padding-top:0; }
+.paperItem .n{ font-weight:800; }
+.paperItem .m{ font-size:12px; opacity:.65; white-space:nowrap; }
+
+    
+.fab .fabIcon{
+  width:36px;
+  height:36px;
+  display:none;
+  stroke:rgba(0,0,0,.62);
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  fill:none;
+}
+.fab.goMode .fabGo{ display:block; }
+.fab.shareMode .fabShare{ display:block; }
+.fab:active{ transform:translateY(1px); }
+
+    /* Toast */
+    .toast{
+      position:fixed;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:92px;
+      background:rgba(0,0,0,.78);
+      color:white;
+      padding:10px 12px;
+      border-radius:999px;
+      font-size:12px;
+      display:none;
+      max-width:90vw;
+      text-align:center;
+      z-index:60;
+    }
+    .toast.show{ display:block; }
+  
+
+    .tabs{
+      display:flex;
+      gap:8px;
+    }
+
+
+    /* Store Color Picker (bottom sheet) */
+    .colorPicker.overlay{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:var(--paper);
+      z-index:9999;
+      padding:14px;
+      align-items:flex-end;
+      justify-content:center;
+    }
+    .colorPicker.overlay.show{ display:flex; }
+    .colorPicker .sheet{
+      width:min(520px, 100%);
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:0 10px 30px rgba(0,0,0,.16);
+      padding:12px 12px 14px;
+    }
+    .colorPicker .sheetHdr{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:0px;
+      padding:2px 2px 10px;
+    }
+    .colorPicker .sheetTitle{ font-weight:800; letter-spacing:.2px; }
+    .colorPicker .sheetClose{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.03);
+      border-radius:12px;
+      padding:6px 10px;
+      font-weight:900;
+      line-height:1;
+      cursor:pointer;
+    }
+    .colorPicker .swatches{
+      display:grid;
+      grid-template-columns:repeat(8, 1fr);
+      gap:0px;
+      padding:4px 2px 8px;
+    }
+    @media (max-width: 420px){
+      .colorPicker .swatches{ grid-template-columns:repeat(6, 1fr); }
+    }
+    .colorPicker .swatch{
+      width:100%;
+      aspect-ratio:1/1;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,.18);
+      box-shadow:0 1px 0 rgba(255,255,255,.35) inset;
+      cursor:pointer;
+      position:relative;
+    }
+    .colorPicker .swatch.used{ opacity:.25; cursor:not-allowed; }
+    .colorPicker .swatch.selected::after{
+      content:"";
+      position:absolute;
+      inset:-4px;
+      border-radius:999px;
+      border:2px solid rgba(0,0,0,.28);
+    }
+    .colorPicker .sheetHint{ font-size:12px; padding:4px 2px 0; }
+
+
+    /* Background options (tinted neutrals, high readability) */
+    .bgSwatches{
+      display:flex;
+      gap:0px;
+      flex-wrap:wrap;
+      padding:2px 2px 0;
+    }
+    .bgSwatch{
+      width:44px;
+      height:30px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,.16);
+      box-shadow:0 1px 0 rgba(255,255,255,.45) inset;
+      cursor:pointer;
+      position:relative;
+      background:var(--paper);
+    }
+    .bgSwatch::after{
+      content:"";
+      position:absolute;
+      inset:6px;
+      border-radius:10px;
+      border:1px solid rgba(0,0,0,.08);
+      opacity:.0;
+    }
+    .bgSwatch.active{
+      border-color:rgba(0,0,0,.28);
+    }
+    .bgSwatch.active::after{
+      opacity:1;
+    }
+
+
+    /* Sheet sections (color picker overlay) */
+    .colorPicker .sheetSection{ margin:0 0 12px; }
+    .colorPicker .sheetSectionTitle{
+      font-size:12px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:rgba(0,0,0,.55);
+      margin:0 0 8px;
+    }
+    .bgSwatchesSheet{
+      display:flex;
+      gap:0px;
+      flex-wrap:wrap;
+      padding:2px 2px 0;
+    }
+    .bgSwatchSheet{
+      width:56px;
+      height:36px;
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,.16);
+      box-shadow:0 1px 0 rgba(255,255,255,.55) inset;
+      cursor:pointer;
+      background:var(--paper);
+      position:relative;
+    }
+    .bgSwatchSheet.active{
+      border-color:rgba(0,0,0,.34);
+    }
+    .bgSwatchSheet.active::after{
+      content:"";
+      position:absolute;
+      inset:6px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,.12);
+    }
+
+/* Type filter button (Items page header) */
+.typeFilterBtn{display:flex;align-items:center;justify-content:space-between;gap:10px;height:46px;min-width:92px;max-width:180px;padding:0 14px 0 16px;border-radius: 18px;border:1px solid rgba(0,0,0,0.16);background:rgba(249,245,236,0.96);box-shadow:0 10px 22px rgba(0,0,0,0.10);font-weight:800;font-size:16px;letter-spacing:.2px;color:rgba(0,0,0,0.74);}
+.typeFilterBtn:active{ transform: translateY(1px); }
+/* Type filter sheet */
+#typeFilterOverlay{position:fixed;inset:0;background:rgba(var(--paper-rgb),0.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:none;align-items:flex-end;justify-content:center;z-index:80;padding:18px;}body.modalOpen{overflow:hidden;}
+body.modalOpen .fab,body.modalOpen .typeFilterFab{opacity:0;pointer-events:none;}
+
+#typeFilterOverlay.open{ display: flex; }
+#typeFilterSheet{width:min(520px,100%);background:var(--card);border:1px solid rgba(0,0,0,0.10);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,0.22);padding:14px 14px 12px 14px;max-height:70vh;overflow:auto;}
+.typeFilterHeader{
+  display:flex; align-items:center; justify-content:space-between;
+  gap: 10px; padding: 2px 2px 10px 2px;
+}
+.typeFilterTitle{ font-weight: 800; letter-spacing: .4px; font-size: 14px; color: rgba(0,0,0,0.65); }
+.typeFilterClose{
+  width: 40px; height: 40px; border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--chip);
+  font-size: 22px; line-height: 1;
+}
+.typeFilterList{ display:flex; flex-direction:column; gap: 8px; padding: 2px; }
+.typeFilterRow{
+  display:flex; align-items:center; justify-content:space-between;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.30);
+  border-radius: 14px;
+  padding: 12px 12px;
+}
+.typeFilterRow .left{ display:flex; align-items:center; gap: 10px; min-width: 0; }
+.typeFilterDot{
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.18);
+  background: rgba(0,0,0,0.10);
+  flex: 0 0 auto;
+}
+.typeFilterName{
+  font-weight: 750;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.typeFilterCheck{
+  width: 18px; height: 18px; border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.25);
+  background: rgba(255,255,255,0.55);
+  display:flex; align-items:center; justify-content:center;
+  font-weight: 900;
+  color: rgba(0,0,0,0.55);
+}
+.typeFilterRow.active{
+  background: rgba(174, 230, 186, 0.26);
+  border-color: rgba(0,0,0,0.18);
+}
+.typeFilterRow.active .typeFilterCheck{
+  background: rgba(174, 230, 186, 0.55);
+  border-color: rgba(0,0,0,0.22);
+  color: rgba(0,0,0,0.75);
+}
+
+
+  /* =========================================================
+     COMMIT: Items page polish (checkbox + filter button)
+     ========================================================= */
+
+  /* Use the higher-contrast check style (like the Filter sheet) for item selection */
+  .row.selected .pill{
+    background: rgba(174, 230, 186, 0.55);
+    border-color: rgba(70, 140, 95, 0.35);
+    box-shadow: 0 10px 18px rgba(70, 140, 95, 0.14);
+  }
+  .row.selected .pill::before{
+    content: "";
+    display: none;
+  }
+  .row.selected .pill::after{
+    content: "✓";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -54%);
+    font-size: 20px;
+    font-weight: 900;
+    color: rgba(0, 0, 0, 0.72);
+    text-shadow: none;
+  }
+
+  /* Type Filter button (above GO) – single caret, matches the app's "pill" vibe */
+  .typeFilterFab{
+    z-index: 55;
+  }
+  .typeFilterBtn{
+    background: rgba(249,245,236,0.96);
+    border: 1px solid rgba(0,0,0,0.16);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.10);
+    border-radius: 18px;
+    height: 46px;
+    padding: 0 14px 0 16px;
+    min-width: 92px;
+    max-width: 180px;
+    color: rgba(0,0,0,0.74);
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 0.2px;
+  }
+  .typeFilterBtn:active{ transform: translateY(1px); }
+
+  /* --- Items type filter FAB positioning (filter beneath Go button) --- */
+.typeFilterFab{
+  bottom: 16px !important;
+  z-index: 75 !important;
+}
+body.typeFilterFabVisible .fab{
+  bottom: 78px !important; /* 16 + (50 button) + 12 gap */
+}
+
+
+/* JS guard: if you see only the header, the file is opening in a viewer that blocks JavaScript
+   or the browser is too old for the current script. */
+#jsGuardOverlay{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  background:rgba(240,235,226,0.94);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+
+  /* Start hidden to prevent flashing during normal loads.
+     If JS is blocked, the <html> retains class guard-wait and the overlay appears after a short delay. */
+  visibility:hidden;
+  opacity:0;
+}
+
+html.guard-wait #jsGuardOverlay{
+  visibility:visible;
+  opacity:0;
+  animation: jsGuardFadeIn .18s ease 1.1s forwards;
+}
+
+@keyframes jsGuardFadeIn{
+  from{ opacity:0; }
+  to{ opacity:1; }
+}
+
+#jsGuardOverlay .card{
+  max-width:520px;
+  width:100%;
+  background:rgba(255,255,255,0.72);
+  border:1px solid rgba(0,0,0,0.10);
+  border-radius:18px;
+  padding:16px;
+  box-shadow:0 12px 40px rgba(0,0,0,0.18);
+}
+#jsGuardOverlay h2{
+  margin:0 0 10px 0;
+  font-size:18px;
+  font-weight:700;
+}
+#jsGuardOverlay p{
+  margin:0 0 10px 0;
+  line-height:1.35;
+  font-size:14px;
+}
+#jsGuardOverlay .tips{
+  margin:10px 0 0 0;
+  padding-left:18px;
+  font-size:13px;
+  line-height:1.35;
+}
+html.app-ready #jsGuardOverlay{ display:none; }
+
+
+/* === Opaque Floating Buttons (Go / Filter / Share) === */
+.fab,
+.goBtn,
+.shareBtn,
+.typeFilterBtn {
+  background-color: var(--accent-green, #bfe9c6) !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.typeFilterBtn {
+  background-color: var(--chip-bg, #f2efe9) !important;
+}
+
+.fab, .goBtn, .shareBtn, .typeFilterBtn {
+  box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+}
+
+
+/* === Prevent accidental text selection on long-press (Items list) === */
+#itemsView, #itemsList, .itemsList, .itemRow, .itemName, .itemMeta, .storeFilters, .pill, .topPill {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* Allow selection/editing inside inputs/textareas/modals */
+input, textarea, .modal, .modal * {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+
+/* === Prevent long-press text selection / context menu on UI chrome (keep enabled for inputs) === */
+.noteModal, .noteModal *,
+.itemRow, .itemRow *,
+.storeFilters, .storeFilters *,
+.fab, .typeFilterBtn, .shareBtn {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* Allow normal selection inside real text inputs */
+.noteModal input, .noteModal textarea,
+.modal input, .modal textarea,
+input, textarea {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
+}
+
+
+/* === Stronger non-text selection suppression (global, allow only inputs/textareas) === */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input, textarea, [contenteditable="true"], .allowSelect {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
+}
+
+
+/* =========================================================
+   Targeted UI Standardization (Setup only)
+   - Keep Items screen look/behavior unchanged
+   - Standardize Setup row rhythm, chevrons, reorder buttons
+   ========================================================= */
+:root{
+  --setup-row-radius: 18px;
+  --setup-row-pad-y: 12px;
+  --setup-row-pad-x: 12px;
+  --setup-row-gap: 10px;
+  --setup-muted: rgba(0,0,0,.56);
+  --setup-border: rgba(0,0,0,.10);
+}
+
+/* Setup lists: consistent tappable row shape and spacing */
+#setupView .list .row,
+#setupView .storeRow,
+#setupView .filterRow,
+#setupView .itemRow,
+#setupView .setupRow,
+#setupView .editRow{
+  border-radius: var(--setup-row-radius);
+  padding: var(--setup-row-pad-y) var(--setup-row-pad-x);
+}
+
+/* Calm secondary text in Setup */
+#setupView .muted,
+#setupView .subtle,
+#setupView .hint{
+  color: var(--setup-muted);
+}
+
+/* Reorder buttons: slightly larger and clearer in Setup only */
+#setupView .reorderBtn,
+#setupView button.reorder,
+#setupView .arrowBtn{
+  width: 40px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid var(--setup-border);
+}
+
+/* Keep note icons from becoming visually 'everywhere':
+   - Do NOT force visibility; rely on existing logic.
+   - Slightly soften note icon when it is shown. */
+.noteBtn{
+  opacity: .85;
+}
+
+
+/* === Setup: Index + Subpages (reduce crowding) === */
+/* === Setup: Prominent Back button (subpages) ===
+   Goal: make the back control unmistakable on mobile while staying on-brand.
+*/
+#pageSetup .setupBackBtn{
+  border: 2px solid rgba(176, 0, 32, .35);
+  background: rgba(176, 0, 32, .06);
+  color: rgba(176, 0, 32, .92);
+  font-weight: 900;
+  letter-spacing: .2px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  min-height: 40px;
+  min-width: 88px;
+  font-size: 15px;
+  line-height: 1;
+  box-shadow: 0 1px 0 rgba(0,0,0,.04);
+}
+#pageSetup .setupBackBtn:active{ transform: translateY(1px); }
+#pageSetup .setupHeaderLeft{ gap: 10px; }
+
+.setupHeaderLeft{ display:flex; align-items:center; gap:8px; }
+.setupBackBtn{ padding:8px 10px; border-radius:12px; margin-right:0; }
+
+.setupIndex{ margin-top:12px; }
+.setupIndexList{ display:flex; flex-direction:column; gap:10px; }
+
+.setupNavRow{
+  width:100%;
+  border:1px solid rgba(0,0,0,.10);
+  background: rgba(0,0,0,.03);
+  border-radius:18px;
+  padding:12px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  text-align:left;
+  cursor:pointer;
+}
+.setupNavRow:active{ transform: translateY(1px); }
+
+.setupNavTitle{ font-size:15px; font-weight:700; }
+.setupNavSub{ font-size:12px; color: rgba(0,0,0,.56); margin-top:2px; }
+.setupNavRight{ font-size:20px; color: rgba(0,0,0,.45); line-height:1; }
+
+.setupSection .card{ margin-top:12px; }
+
+
+/* Setup subpages: titles removed; tighten top spacing */
+#setupSectionStores .card, #setupSectionFilters .card, #setupSectionItems .card, #setupSectionTransfer .card{
+  padding-top: 14px;
+}
+
+
+
+/* --- Setup: Back button refinement (centered, on-style) --- */
+#pageSetup .setupBackBtn{
+  width: 44px;
+  height: 38px;               /* less tall */
+  padding: 0;
+  border-radius: 14px;
+  border: 2px solid rgba(192, 57, 43, .92);
+  background: rgba(var(--paper-rgb), .92);
+  color: rgba(192, 57, 43, .98);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 0 rgba(0,0,0,.04);
+}
+#pageSetup .setupBackBtn .backArrowSvg{
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+#pageSetup .setupBackBtn:hover{ background: rgba(var(--paper-rgb), .98); }
+#pageSetup .setupBackBtn:active{ transform: translateY(1px); }
+
+
+  /* ===========================
+     Go Completion State (overlay + review)
+     =========================== */
+  body.completeOpen .fab{ opacity:0 !important; pointer-events:none !important; }
+
+  .goComplete{
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .goCompleteCard{
+    width: min(420px, calc(100vw - 28px));
+    padding: 18px 16px 14px;
+    border-radius: 18px;
+    background: rgba(249,245,236,0.98);
+    border: 1px solid rgba(0,0,0,0.16);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.22);
+    text-align: center;
+  }
+  .completeCheckPill{
+    width: 130px;
+    height: 96px;
+    margin: 8px auto 14px;
+    border-radius: 18px;
+    position: relative;
+    background: rgba(174, 230, 186, 0.62);
+    border: 1px solid rgba(70, 140, 95, 0.42);
+    box-shadow: 0 14px 26px rgba(70, 140, 95, 0.18);
+  }
+  .completeCheckPill::after{
+    content:"✓";
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform: translate(-50%, -56%);
+    font-size: 56px;
+    font-weight: 900;
+    color: rgba(0,0,0,0.74);
+  }
+  .completeActions{
+    display:flex;
+    gap: 10px;
+    justify-content: space-between;
+    align-items:center;
+    margin-top: 10px;
+  }
+  .completeBtn{
+    flex: 1 1 0;
+    height: 44px;
+    border-radius: 14px;
+    border: 1px solid rgba(0,0,0,0.18);
+    background: rgba(255,255,255,0.92);
+    box-shadow: 0 10px 18px rgba(0,0,0,0.10);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 8px;
+    font-weight: 800;
+    letter-spacing: .2px;
+  }
+  .completeBtn svg{ width: 22px; height: 22px; }
+  .completeBtn.back{
+    border-color: rgba(180, 40, 40, 0.55);
+    background: rgba(255,255,255,0.92);
+  }
+  .completeBtn.back svg{
+    width: 26px; height: 26px;
+    stroke: rgba(180, 40, 40, 0.92);
+  }
+  .completeBtn.review{
+    background: rgba(249,245,236,0.96);
+  }
+  .completeBtn.new{
+    border-color: rgba(0,0,0,0.18);
+  }
+  .completeBtn.new svg{
+    width: 26px; height: 26px;
+  }
+
+  .reviewList{
+    display:flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 6px;
+  }
+  .reviewRow{
+    display:flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 10px;
+    border-radius: 14px;
+    background: rgba(249,245,236,0.72);
+    border: 1px solid rgba(0,0,0,0.12);
+  }
+  .reviewRow .rName{
+    font-weight: 850;
+    line-height: 1.15;
+  }
+  .reviewRow .rMeta{
+    font-size: 12px;
+    opacity: .75;
+    margin-top: 2px;
+  }
+  .reviewRow .rRight{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:10px;
+    text-align: right;
+    white-space: nowrap;
+    font-weight: 850;
+  }
+
+  .confirmBody{
+    font-size: 14px;
+    line-height: 1.35;
+    opacity: .9;
+    margin-top: 8px;
+  }
+
+
+/* Pre-Go review footer */
+#goReviewPreGoFoot{display:none}
+
+/* Unified red back button */
+.backBtnRed{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width: 86px;
+  height: 46px;
+  border-radius: 18px;
+  border: 2px solid rgba(192,57,43,.92);
+  background: rgba(var(--paper-rgb), .92);
+  color: rgba(192,57,43,.92);
+  box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  -webkit-tap-highlight-color: transparent;
+}
+.backBtnRed svg{
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.backBtnRed:active{ transform: translateY(1px); }
+
+/* Completion overlay back button: match red outline style */
+.completeActions .completeBtn.back{
+  border: 2px solid rgba(192,57,43,.92);
+  background: rgba(var(--paper-rgb), .92);
+  color: rgba(192,57,43,.92);
+}
+.completeActions .completeBtn.back svg{
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+
+
+/* Stores Setup: enlarge the store color dot (only on Stores setup list) */
+#setupSectionStores .row .dot{
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+}
+
+
+/* ===== Variants: selected list + Go expand ===== */
+.varSelected{ margin-top:8px; border-top:1px solid rgba(0,0,0,.06); padding-top:8px; }
+.varSelRow{ display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-radius:12px; background:rgba(0,0,0,.03); margin:0 0 8px; }
+.varSelRow .lbl{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:58%; }
+.varSelRow .q{ display:flex; align-items:center; gap:8px; }
+.varSelRow .miniBtn{ width:34px; height:34px; border-radius:12px; border:1px solid rgba(0,0,0,.10); background:rgba(255,255,255,.45); font-weight:800; }
+.varSelRow .miniVal{ min-width:44px; text-align:center; font-weight:700; }
+.tools .varBtn{ padding:0 10px; height:30px; border-radius:12px; border:1px solid rgba(0,0,0,.10); background:rgba(0,0,0,.03); font-weight:700; }
+.subRow .qtyBadge{ transform:none; }
+
+
+/* =====================
+   Premium polish overrides (non-destructive)
+   Goal: elevate typography + surfaces without touching app logic.
+   ===================== */
+:root{
+  --radius-xl: 26px;
+  --radius-lg: 20px;
+  --radius-md: 16px;
+  --shadow-soft: 0 10px 30px rgba(0,0,0,.08);
+  --shadow-card: 0 8px 22px rgba(0,0,0,.08);
+  --shadow-float: 0 14px 40px rgba(0,0,0,.14);
+  --glass-strong: rgba(255,255,255,.62);
+  --glass: rgba(255,255,255,.45);
+  --glass-weak: rgba(255,255,255,.32);
+}
+
+html,body{
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body{
+  font-family: ui-rounded, system-ui, -apple-system, "SF Pro Text", "SF Pro Display", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Top chrome: more premium glass + softer edges */
+.top{
+  background: var(--glass-weak) !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: var(--shadow-soft);
+}
+
+.seg{
+  border-radius: var(--radius-xl) !important;
+  border: 1px solid rgba(0,0,0,.06) !important;
+  box-shadow: 0 8px 18px rgba(0,0,0,.06);
+}
+
+.seg button{
+  border-radius: 18px !important;
+}
+
+/* Rows feel more like tappable list items */
+.row,
+.storeHead{
+  border-radius: var(--radius-md) !important;
+}
+
+.row{
+  transition: background .15s ease, transform .12s ease;
+}
+
+.row:active{
+  transform: scale(.995);
+}
+
+/* Chips + pills */
+.chip,
+.pill,
+.badge,
+.count,
+.variantPill{
+  border: 1px solid rgba(0,0,0,.08) !important;
+}
+
+/* Buttons: slightly more depth + better press feedback */
+.btn,
+.circleBtn,
+.fab,
+.noteBtn,
+.iconBtn{
+  border: 1px solid rgba(0,0,0,.10) !important;
+  box-shadow: 0 10px 24px rgba(0,0,0,.10);
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+
+.btn:active,
+.circleBtn:active,
+.fab:active,
+.noteBtn:active,
+.iconBtn:active{
+  transform: translateY(1px);
+  box-shadow: 0 6px 16px rgba(0,0,0,.10);
+}
+
+/* Modals / sheets */
+.modal,
+.sheet,
+.dialog{
+  border-radius: 28px !important;
+  box-shadow: var(--shadow-float);
+  border: 1px solid rgba(0,0,0,.08);
+}
+
+/* Inputs */
+input, textarea{
+  border-radius: 18px !important;
+}
+
+/* Subtle separators (reduce "hard" lines) */
+.hr,
+.divider,
+.sep{
+  opacity: .6;
+}
+
+/* Trip (Go) mode: keep overlay behavior, but make the header feel intentional */
+body.trip .top{
+  background: var(--glass-strong) !important;
+}
+
+/* Ensure full-bleed "dim" regions (if present) don't show gutters */
+.tripDim,
+.tripDimHeader,
+.tripDimBottom{
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Accessibility: clearer focus ring when keyboard is used */
+:focus-visible{
+  outline: 2px solid rgba(0,0,0,.35);
+  outline-offset: 2px;
+}
+
+/* --- Trip focus: keep header clean; only dim collapsed-store region --- */
+body.tripMode::before{display:none !important;}
+body.tripMode .topBar{background:transparent !important; box-shadow:none !important;}
+body.tripMode .pages{padding-top:var(--topInset) !important;}
+
+
+
+/* ===== Premium polish pass (visual-only) 2026-01-11 =====
+   Goal: tighten hierarchy, spacing rhythm, and component consistency
+   without changing behavior/logic.
+*/
+:root{
+  /* Rhythm */
+  --ui-gap: 10px;
+  --ui-pad: 12px;
+  --ui-pad-lg: 16px;
+  --ui-row-h: 48px;
+
+  /* Shape */
+  --ui-radius-sm: 12px;
+  --ui-radius: 16px;
+
+  /* Surfaces */
+  --ui-border: rgba(0,0,0,.08);
+  --ui-border-strong: rgba(0,0,0,.12);
+  --ui-shadow-sm: 0 2px 10px rgba(0,0,0,.06);
+  --ui-shadow: 0 10px 28px rgba(0,0,0,.10);
+
+  /* Text */
+  --ui-text: rgba(0,0,0,.92);
+  --ui-text-sub: rgba(0,0,0,.62);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --ui-border: rgba(255,255,255,.10);
+    --ui-border-strong: rgba(255,255,255,.14);
+    --ui-shadow-sm: 0 2px 10px rgba(0,0,0,.35);
+    --ui-shadow: 0 12px 30px rgba(0,0,0,.45);
+    --ui-text: rgba(255,255,255,.92);
+    --ui-text-sub: rgba(255,255,255,.62);
+  }
+}
+
+/* Typography baseline */
+body{
+  color: var(--ui-text);
+  text-rendering: geometricPrecision;
+}
+.small, .muted, .sub, .hint{ color: var(--ui-text-sub) !important; }
+
+/* Consistent containers */
+.top, header .top{
+  border-radius: var(--ui-radius);
+  border: 1px solid var(--ui-border);
+  box-shadow: var(--ui-shadow-sm);
+  background-clip: padding-box;
+}
+.seg, .card, .sheet, .modal{
+  border-radius: var(--ui-radius);
+  border: 1px solid var(--ui-border);
+  box-shadow: none;
+  background-clip: padding-box;
+}
+
+/* Consistent rows and touch targets */
+.row, .storeHead, .varSelRow{
+  min-height: var(--ui-row-h);
+}
+.row{
+  padding: 10px var(--ui-pad);
+  gap: var(--ui-gap);
+}
+.storeHead{
+  padding: 10px var(--ui-pad);
+}
+.storeName{
+  letter-spacing: .2px;
+}
+#pageTrip .h{
+  padding-left: var(--ui-pad);
+  padding-right: var(--ui-pad);
+}
+
+/* Buttons: unify height, radius, and press feedback */
+.btn, button, .miniIcon, .pill, .variantPill, .varBtn{
+  border-radius: var(--ui-radius-sm) !important;
+  border-color: var(--ui-border) !important;
+}
+.btn, button{
+  min-height: 40px;
+}
+.btn:active, button:active, .miniIcon:active, .pill:active, .varBtn:active{
+  transform: translateY(1px);
+}
+
+/* Pills / counters: consistent sizing and legibility */
+.pill, .count, .varBadge{
+  border: 1px solid var(--ui-border);
+  font-variant-numeric: tabular-nums;
+}
+.count, .varBadge{
+  min-width: 24px;
+  height: 22px;
+  line-height: 22px;
+  font-size: 13px;
+  padding: 0 8px;
+}
+
+/* Store chips: crisp hit area + subdued inactive */
+.storeDot{
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--ui-border);
+}
+.storeDot.empty{
+  filter: grayscale(1);
+  opacity: .28;
+}
+
+/* Reduce accidental “noise”: remove thin dividers where spacing already signals structure */
+hr, .divider, .line{
+  opacity: .55;
+}
+
+
+/* Paper Mode: consolidated list with qty on the right */
+
+.paperRowVar .paperName{padding-left:0;}
+.paperVar{opacity:.72; font-weight:700;}
+.paperRow{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:10px 12px; border-bottom:1px solid rgba(0,0,0,.08);}
+.paperName{flex:1; font-size:16px; line-height:1.25;}
+.paperQty{min-width:44px; text-align:right; font-size:16px; font-weight:800; opacity:.72;}
+.paperQtyOff{opacity:0;}
+.paperEmpty{padding:16px 12px; opacity:.7;}
+
+
+/* Page mode typography: item bold, variant lighter */
+.paperName{font-weight:800;}
+.paperVar{font-weight:500; opacity:.65;}
+
+
+/* Page mode: align variants under a fixed item column (avoid repeating item name) */
+:root{ --paperItemW: clamp(120px, 38vw, 180px); }
+.paperRow{
+  display:grid;
+  grid-template-columns: var(--paperItemW) 1fr 56px;
+  align-items:center;
+  gap:12px;
+  padding:10px 12px;
+  border-bottom:1px solid rgba(0,0,0,.08);
+}
+.paperItem{
+  font-weight:800;
+  font-size:16px;
+  line-height:1.25;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.paperDetail{
+  font-weight:500;
+  opacity:.65;
+  font-size:16px;
+  line-height:1.25;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.paperRowSolo .paperItem{ grid-column: 1 / span 2; }
+.paperRowSolo .paperDetail{ display:none; }
+.paperQty{ min-width:56px; text-align:right; font-size:16px; font-weight:800; opacity:.72; }
+.paperQtyOff{ opacity:0; }
+
+
+/* Ensure Page/Back button matches Share FAB width (same stacked footprint) */
+#tripPaperFab{ width:92px; }
+#tripPaperBtn{
+  width:92px;
+  min-width:92px;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding-left:0;
+  padding-right:0;
+}
+
+
+/* Lock app to light appearance to avoid device dark-mode washing out text */
+:root{ color-scheme: light; }
+@media (prefers-color-scheme: dark){
+  :root{ color-scheme: light; }
+  body{ color: rgba(0,0,0,.86) !important; }
+  /* Ensure key list text stays readable */
+  .row, .row *, .section, .section *, #pageItems, #pageItems *, #pageSetup, #pageSetup *,
+  #pageTrip, #pageTrip *, #paperOverlay, #paperOverlay *{ color: inherit; }
+}
+
+
+/* Prevent store color chips from being visually clipped on some devices */
+.storeFilters{
+  overflow-x:hidden !important;
+  overflow-y:visible !important;
+  padding-top:6px !important;
+  padding-bottom:6px !important;
+}
+
+</style>
+</head>
+
+<body>
+
+  <div id="jsGuardOverlay" aria-live="polite">
+    <div class="card">
+      <h2>Open in a browser (JavaScript required)</h2>
+      <p>If you are seeing a blank screen with only the top bar, this file is being opened in a preview app that blocks JavaScript (or an older browser).</p>
+      <ul class="tips">
+        <li>Download the file, then choose <strong>Open with</strong> → <strong>Chrome</strong> or <strong>Samsung Internet</strong>.</li>
+        <li>If you opened it from a chat/drive preview, tap the menu and choose <strong>Open in browser</strong>.</li>
+        <li>Make sure JavaScript is enabled in the browser settings.</li>
+      </ul>
+      <noscript>
+        <p><strong>JavaScript appears to be disabled.</strong> Please open this file in a browser with JavaScript enabled.</p>
+      </noscript>
+      <pre id="jsGuardDiag" style="display:none; margin:10px 0 0 0; padding:10px; border:1px solid rgba(0,0,0,0.12); border-radius:12px; background:rgba(255,255,255,0.65); font-size:12px; line-height:1.35; white-space:pre-wrap;"></pre>
+    </div>
+  </div>
+
+  <div class="app">
+    <header>
+      <div class="top">
+        <div class="brand">
+          <div class="t"></div>
+          <div class="s" id="subtitle" style="display:none;"></div>
+        </div>
+        <div class="nav">
+          <div class="storeFilters" id="storeFilters" aria-label="Store filter"></div>
+          <div class="tabs">
+          <button class="tab" id="tabItems">Items</button>
+          <button class="tab" id="tabSetup">Setup</button>
+        </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Items -->
+    <div class="page" id="pageItems">
+      <div class="section">
+        <div class="h">
+          <div class="title" id="itemsTitle">&nbsp;</div>
+          <div class="hRight">
+            <div class="meta" id="itemsMeta"></div>
+            <button class="miniIcon" id="btnToggleAll" type="button" aria-label="Select all" title="Select all"></button>
+          </div>
+        </div>
+        <div class="list" id="itemsList"></div>
+      </div>
+    </div>
+
+    <!-- Trip -->
+    <div class="page" id="pageTrip">
+      <div class="section">
+        <div class="h">
+          <div class="title"></div>
+          <div class="hRight">
+            <div class="meta" id="tripMeta"></div>
+            <button class="miniIcon" id="btnNewList" type="button" aria-label="Start a new list" title="New list"></button>
+          </div>
+        </div>
+        <div id="tripStores"></div>
+      </div>
+    </div>
+
+    <!-- Setup -->
+    <div class="page" id="pageSetup">
+      <div class="section">
+        <div class="h setupHeader">
+          <div class="setupHeaderLeft">
+            <button class="btn setupBackBtn" id="setupBackBtn" type="button" style="display:none;" aria-label="Back to Setup menu" title="Back"><svg class="backArrowSvg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+  <path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg></button>
+            <div class="title" id="setupTitle">Setup</div>
+          </div>
+          <div class="meta" id="setupMeta"></div>
+        </div>
+
+        
+<div id="setupIndex" class="setupIndex">
+  <div class="setupIndexList">
+    <button class="setupNavRow" id="navStores" type="button">
+      <div class="setupNavMain">
+        <div class="setupNavTitle">Stores</div>
+        <div class="setupNavSub" id="navStoresSub"></div>
+      </div>
+      <div class="setupNavRight">›</div>
+    </button>
+
+    <button class="setupNavRow" id="navFilters" type="button">
+      <div class="setupNavMain">
+        <div class="setupNavTitle">Filters</div>
+        <div class="setupNavSub" id="navFiltersSub"></div>
+      </div>
+      <div class="setupNavRight">›</div>
+    </button>
+
+    <button class="setupNavRow" id="navItems" type="button">
+      <div class="setupNavMain">
+        <div class="setupNavTitle">Items</div>
+        <div class="setupNavSub" id="navItemsSub"></div>
+      </div>
+      <div class="setupNavRight">›</div>
+    </button>
+
+    <button class="setupNavRow" id="navTransfer" type="button">
+      <div class="setupNavMain">
+        <div class="setupNavTitle">Transfer</div>
+        <div class="setupNavSub">Import / Backup / Share</div>
+      </div>
+      <div class="setupNavRight">›</div>
+    </button>
+  </div>
+</div>
+
+<div class="setupSection" id="setupSectionStores" style="display:none;">
+  <div class="card">
+            <div class="fieldRow">
+              <input id="newStoreName" type="text" placeholder="New store"  autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="text" />
+              <button class="btn primary" id="addStoreBtn">Add</button>
+            </div>
+            <div class="list" id="storesList" style="margin-top:10px;"></div>
+          </div>
+</div>
+            
+</div>
+
+<div class="setupSection" id="setupSectionFilters" style="display:none;">
+  <div class="card">
+            <div class="fieldRow">
+              <input id="newTypeName" type="text" placeholder="New filter"  autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="text" />
+              <button class="btn primary" id="addTypeBtn">Add</button>
+            </div>
+            <div class="list" id="typesList" style="margin-top:10px;"></div>
+          </div>
+</div>
+            
+</div>
+
+<div class="setupSection" id="setupSectionItems" style="display:none;">
+  <div class="card" style="grid-column:1/-1;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:0px;">
+              <button class="btn primary" id="openNewItemBtn">New Item</button>
+            </div>
+            <div class="list" id="inventoryList" style="margin-top:10px;"></div>
+          </div>
+</div>
+            
+</div>
+
+
+<div class="setupSection" id="setupSectionTransfer" style="display:none;">
+  <div class="card" style="grid-column:1/-1;">
+    <div class="muted" style="margin-bottom:10px;">
+      Use Import to open a shared list (temporary) or a full backup (to permanently populate this device’s baseline).
+      Temporary shared lists are created from the Share button in Go mode.
+    </div>
+    <div class="fieldRow" style="justify-content:flex-end; flex-wrap:wrap;">
+      <button class="btn" id="importListFileBtn" type="button">Import List</button>
+      <button class="btn" id="shareBackupFileBtn" type="button">Share Backup</button>
+      <button class="btn primary" id="importBackupFileBtn" type="button">Import Backup</button>
+      <input id="importFileInput" type="file" accept=".json,application/json" style="display:none" />
+    </div>
+  </div>
+</div>
+
+
+  <!-- Trip FAB (Items page only) -->
+  
+  <div id="itemsTypeFilterFab" class="typeFilterFab" aria-hidden="true">
+    <button id="typeFilterBtn" class="typeFilterBtn" type="button" aria-label="Filter items by type">
+      <span id="typeFilterLabel">All</span>
+      <span class="typeFilterCaret" aria-hidden="true">▾</span>
+    </button>
+  </div>
+
+<button class="fab goMode" id="tripFab" aria-label="Go" title="Go">
+    <svg class="fabIcon fabGo" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9 5l7 7-7 7"></path>
+    </svg>
+    <svg class="fabIcon fabShare" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="18" cy="5" r="2"></circle>
+      <circle cx="6" cy="12" r="2"></circle>
+      <circle cx="18" cy="19" r="2"></circle>
+      <path d="M8 12l8-6"></path>
+      <path d="M8 12l8 6"></path>
+    </svg>
+  </button>
+  <!-- Trip Paper/Back mini button (Trip page only) -->
+  <div id="tripPaperFab" class="tripPaperFab" aria-hidden="true">
+    <button id="tripPaperBtn" class="paperMiniBtn" type="button" aria-label="Page">Page</button>
+  </div>
+
+
+  
+  <!-- Paper Mode overlay -->
+  <div class="paperOverlay" id="paperOverlay" aria-hidden="true">
+    <div class="paperSheet">
+      <div class="paperList" id="paperList"></div>
+    </div>
+  </div>
+
+<!-- Item editor modal -->
+  <div class="overlay" id="itemModalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Item editor">
+      <div class="mHead">
+        <div class="t" id="itemModalTitle">Item</div>
+        <button class="btn" id="closeItemModalBtn">Close</button>
+      </div>
+      <div class="mBody">
+        <input id="itemNameInput" type="text" placeholder="Item name"  autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="text" />
+
+        <div class="fieldRow" style="margin-top:10px;">
+          <div class="muted" style="min-width:54px;">Unit</div>
+          <input id="itemUnitInput" type="text" placeholder="Optional (e.g., lb, pack, oz)" style="flex:1;"  autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="text" />
+        </div>
+
+        <div>
+          <div class="muted" style="margin:0 0 6px;">Stores</div>
+          <div class="chips" id="itemStoresChips"></div>
+        </div>
+
+        <div>
+          <div class="muted" style="margin:0 0 6px;">Filter</div>
+          <div class="chips" id="itemTypeChips"></div>
+        </div>
+      
+        <div>
+          <div class="muted" style="margin:0 0 6px;">Variants</div>
+          <div class="fieldRow">
+            <input id="itemVariantInput" type="text" placeholder="Add variant (e.g., Honeycrisp)"  autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="text" />
+            <button class="btn" id="addVariantBtn" type="button">Add</button>
+          </div>
+          <div class="chips" id="itemVariantsChips" style="margin-top:8px;"></div>
+        </div>
+
+
+      </div>
+      <div class="mFoot">
+        <button class="btn danger" id="deleteItemBtn">Delete</button>
+        <button class="btn primary" id="saveItemBtn">Save</button>
+      </div>
+    </div>
+  </div>
+  <!-- Filter editor modal -->
+  <div class="overlay" id="typeModalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Filter editor">
+      <div class="mHead">
+        <div class="t" id="typeModalTitle">Filter</div>
+        <button class="btn" id="closeTypeModalBtn">Close</button>
+      </div>
+      <div class="mBody">
+        <input id="typeNameInput" type="text" placeholder="Filter name"  autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="text" />
+      </div>
+      <div class="mFoot">
+        <button class="btn danger" id="deleteTypeBtn">Remove</button>
+        <button class="btn primary" id="saveTypeBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- Note editor modal (long-press an item; icon shows when note exists) -->
+  <div class="overlay" id="noteOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Item note">
+      <div class="mHead">
+        <div class="t" id="noteTitle">Note</div>
+      </div>
+      <div class="mBody">
+        <div class="topActions">
+          <button class="btn danger" id="clearNoteBtn">Clear</button>
+        </div>
+        <div id="noteVariantSection" style="display:none;">
+          <div class="muted" style="margin:0 0 6px;">Variant</div>
+          <div class="chips" id="noteVariantChips"></div>
+          <div id="noteVariantSelected" class="varSelected" style="display:none;"></div>
+        </div>
+        <textarea id="noteInput" placeholder="Add a note..." rows="6" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="text"></textarea>
+      </div>
+      <div class="mFoot">
+        <div class="qtyRow footerQty" id="noteFooterQty">
+          <button class="qtyBtn" id="noteQtyMinus" type="button" aria-label="Decrease quantity">−</button>
+          <div class="qtyVal" id="noteQtyVal">x1</div>
+          <button class="qtyBtn" id="noteQtyPlus" type="button" aria-label="Increase quantity">+</button>
+          <div class="qtyLbl">Qty</div>
+        </div>
+        <div class="noteActionsRight">
+          <button class="btn attnBtn" id="attnNoteBtn" type="button" aria-label="Toggle attention">!</button>
+          <button class="btn primary" id="saveNoteBtn">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+  
+  <!-- Go completion overlay (shown when all items are found) -->
+  <div class="overlay" id="goCompleteOverlay" aria-hidden="true">
+    <div class="goComplete" role="dialog" aria-modal="true" aria-label="All items found">
+      <div class="goCompleteCard">
+        <div class="completeCheckPill" aria-hidden="true"></div>
+        <div class="completeActions">
+          <button class="completeBtn back" id="completeBackBtn" type="button" aria-label="Back">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button class="completeBtn review" id="completeReviewBtn" type="button">Review</button>
+          <button class="completeBtn new" id="completeNewListBtn" type="button" aria-label="New list">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Go completed review (read-only) -->
+  <div class="overlay" id="goReviewOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Completed list review">
+      <div class="mHead">
+        <div class="t">Completed</div>
+        <button class="btn" id="closeGoReviewBtn" type="button">Close</button>
+      </div>
+      <div class="mBody">
+        <div class="reviewList" id="goReviewList"></div>
+      </div>
+      <div class="mFoot" id="goReviewPreGoFoot" style="display:none; gap:12px; padding-top:12px; border-top:1px solid var(--line); justify-content:space-between;">
+        <button type="button" class="btn backBtnRed" id="preGoBackBtn" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 L8.5 12 L14.5 18.5"/></svg></button>
+        <button type="button" class="btn confirmGreen" id="preGoConfirmBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- In-app confirmation dialog (used by Go completion actions) -->
+  <div class="overlay" id="goConfirmOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Confirm action">
+      <div class="mHead">
+        <div class="t" id="goConfirmTitle">Confirm</div>
+      </div>
+      <div class="mBody">
+        <div class="confirmBody" id="goConfirmText"></div>
+      </div>
+      <div class="mFoot">
+        <button class="btn cancelRed" id="goConfirmCancelBtn" type="button">Cancel</button>
+        <button class="btn primary confirmGreen" id="goConfirmOkBtn" type="button">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="toast" id="toast"></div>
+
+<script>
+
+/* --- Boot guard + diagnostics (local-file compatibility) --- */
+(function(){
+  var de = document.documentElement;
+  function esc(s){ return String(s||'').replace(/[<>&]/g,function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]||c; }); }
+  function showDiag(title, detail){
+    try{
+      var ov = document.getElementById('jsGuardOverlay');
+      var pre = document.getElementById('jsGuardDiag');
+      if(pre){
+        pre.style.display = 'block';
+        var ua = navigator.userAgent || '';
+        var loc = (location && location.href) ? location.href : '';
+        pre.innerHTML =
+          esc(title) + "\n\n" +
+          "URL: " + esc(loc) + "\n" +
+          "UA: " + esc(ua) + "\n\n" +
+          esc(detail || '');
+      }
+      /* Ensure overlay can appear even if app code aborts early */
+      if(de && de.className.indexOf('guard-wait') === -1){
+        de.className += ' guard-wait';
+      }
+    }catch(e){}
+  }
+  window.addEventListener('error', function(e){
+    try{
+      var msg = (e && e.message) ? e.message : 'Script error';
+      var src = (e && e.filename) ? e.filename : '';
+      var ln  = (e && (e.lineno||e.lineNumber)) ? (e.lineno||e.lineNumber) : '';
+      var col = (e && (e.colno||e.columnNumber)) ? (e.colno||e.columnNumber) : '';
+      showDiag('Startup error', msg + "\n" + src + (ln?(":"+ln):"") + (col?(":"+col):""));
+    }catch(_){}
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    try{
+      var r = e && e.reason;
+      showDiag('Unhandled promise rejection', (r && (r.stack||r.message)) ? (r.stack||r.message) : String(r));
+    }catch(_){}
+  });
+})();
+
+
+/* ===========================
+   Data model
+   =========================== */
+var LS_BASELINE_KEY = "house_list_items_trip_setup_v1";
+var LS_SHARED_KEY   = "house_list_items_trip_setup_shared_v1";
+var LS_MODE_KEY     = "house_list_items_trip_setup_mode_v1";
+var LS_BG_KEY       = "house_list_bg_v1";
+
+var palette = [
+  /* Core */
+  "#5E8C61","#3F6F5B","#8FAF9A","#7B8C4A",
+  "#B67A5A","#9C5B3A","#7A3F2B",
+  "#4F6D8A","#5B6E7A","#3E4C59",
+  "#6B4C63","#7A3A4A",
+  "#B59B4A","#9E8A3A",
+  "#5A5A5A","#3C3C3C",
+
+  /* Expanded – contrast-safe */
+  "#1F6F78", /* deep teal */
+  "#2E5E4E", /* pine */
+  "#2F5D9F", /* cobalt */
+  "#1F3552", /* navy */
+  "#55616F", /* slate */
+  "#7B2E3F", /* burgundy */
+  "#A04A2A", /* rust */
+  "#C06A4A", /* terracotta */
+  "#C9A33A", /* goldenrod */
+  "#5E3A6F", /* plum */
+  "#6B4A2D", /* umber */
+  "#2B2B2B"  /* charcoal */
+];
+
+function usedStoreColors(exceptStoreId){
+  var used = {};
+  (((state && state.stores) ? state.stores : [])).forEach(s=>{
+    if(exceptStoreId && s.id === exceptStoreId) return;
+    if(s.color) used[String(s.color).toLowerCase()] = true;
+  });
+  return used;
+}
+function nextUnusedColor(exceptStoreId){
+  var used = usedStoreColors(exceptStoreId);
+  for(var c of (palette||[])){
+    if(!used[String(c).toLowerCase()]) return c;
+  }
+  // if exhausted, fall back to first
+  return (palette && palette[0]) ? palette[0] : "#999";
+}
+
+
+
+var BACKGROUNDS = [
+  { id:"parchment", name:"Parchment",  hex:"#f3ecde" },
+  { id:"oat",       name:"Oat",         hex:"#efe6cf" },
+  { id:"stone",     name:"Stone",       hex:"#e9e7e2" },
+  { id:"cool",      name:"Cool Paper",  hex:"#e9eef2" },
+  { id:"sage",      name:"Sage Tint",   hex:"#e8efe0" },
+  { id:"clay",      name:"Clay Tint",   hex:"#f2e3da" }
+];
+
+function hexToRgbTriplet(hex){
+  var h = String(hex).replace("#","").trim();
+  if(h.length !== 6) return "247,242,232";
+  var r = parseInt(h.slice(0,2),16);
+  var g = parseInt(h.slice(2,4),16);
+  var b = parseInt(h.slice(4,6),16);
+  return `${r},${g},${b}`;
+}
+
+
+function renderBackgroundSwatches(){
+  var wrap = document.getElementById("bgSwatchesSheet");
+  if(!wrap) return;
+  var current = (localStorage.getItem(LS_BG_KEY) || getComputedStyle(document.documentElement).getPropertyValue("--paper").trim() || "#f7f2e8").toLowerCase();
+  wrap.innerHTML = "";
+  BACKGROUNDS.forEach(bg=>{
+    var d = document.createElement("div");
+    d.className = "bgSwatchSheet" + (current === bg.hex.toLowerCase() ? " active" : "");
+    d.style.background = bg.hex;
+    d.title = bg.name;
+    d.addEventListener("click", ()=>{
+      applyBackground(bg.hex);
+      renderBackgroundSwatches();
+      // Keep everything visually consistent immediately
+      renderAll();
+    });
+    wrap.appendChild(d);
+  });
+}
+
+function applyBackground(hex){
+  var root = document.documentElement;
+  root.style.setProperty("--paper", hex);
+  root.style.setProperty("--paper-rgb", hexToRgbTriplet(hex));
+  try{ localStorage.setItem(LS_BG_KEY, hex); }catch(e){}
+}
+
+function loadBackground(){
+  try{
+    var saved = localStorage.getItem(LS_BG_KEY);
+    if(saved && /^#([0-9a-f]{6})$/i.test(saved)){
+      applyBackground(saved);
+      return saved.toLowerCase();
+    }
+  }catch(e){}
+  // default is current --paper from :root
+  return getComputedStyle(document.documentElement).getPropertyValue("--paper").trim().toLowerCase() || "#f7f2e8";
+}
+
+var uid = (p)=> p+"_"+Math.random().toString(16).slice(2)+"_"+Date.now().toString(16);
+
+function defaultState(){
+  var s1 = { id: uid("s"), name: "Wegmans", color: (palette && palette[0]) ? palette[0] : "#2f2f2f" };
+  var s2 = { id: uid("s"), name: "Costco",  color: (palette && palette[1]) ? palette[1] : ((palette && palette[0]) ? palette[0] : "#6b6b6b") };
+  var t1 = { id: uid("t"), name: "Produce", order: 0 };
+  var t2 = { id: uid("t"), name: "Dairy", order: 1 };
+  var t3 = { id: uid("t"), name: "Household", order: 2 };
+  return {
+    version: 1,
+    goActiveStoreId: null,
+    goActiveManual: false,
+    stores: [s1, s2],
+    types: [t1, t2, t3],
+    items: [
+      { id: uid("i"), name:"Eggs", storeIds:[s1.id], typeId:t2.id, selected:false },
+      { id: uid("i"), name:"Milk", storeIds:[s1.id], typeId:t2.id, selected:false },
+      { id: uid("i"), name:"Apples", storeIds:[s1.id], typeId:t1.id, selected:false },
+      { id: uid("i"), name:"Paper Towels", storeIds:[s2.id], typeId:t3.id, selected:false },
+    ]
+  };
+}
+
+function normalizeState(s){
+  if(!s || s.version !== 1) return defaultState();
+  if(!s.stores) s.stores = [];
+  if(!s.types)  s.types  = [];
+  if(!s.items)  s.items  = [];
+    if(typeof s.goActiveStoreId === "undefined") s.goActiveStoreId = null;
+  if(typeof s.goActiveManual === "undefined") s.goActiveManual = false;
+// Normalize item fields
+  s.items.forEach(function(it){
+    if(!it) return;
+    if(!it.storeIds || !Array.isArray(it.storeIds)) it.storeIds = [];
+    if(it.variants && !Array.isArray(it.variants)) it.variants = [];
+  });
+  // Ensure filter order is always stable
+  s.types.forEach((t, idx)=>{ if(typeof t.order !== "number") t.order = idx; });
+  s.types.sort((a,b)=>a.order-b.order);
+  s.types.forEach((t, idx)=>{ t.order = idx; });
+  return s;
+}
+
+function loadBaseline(){
+  try{
+    var raw = localStorage.getItem(LS_BASELINE_KEY);
+    if(!raw) return defaultState();
+    return normalizeState(JSON.parse(raw));
+  }catch(e){
+    return defaultState();
+  }
+}
+function loadShared(){
+  try{
+    var raw = localStorage.getItem(LS_SHARED_KEY);
+    if(!raw) return null;
+    return normalizeState(JSON.parse(raw));
+  }catch(e){
+    return null;
+  }
+}
+function getMode(){
+  try{ return (localStorage.getItem(LS_MODE_KEY) || "baseline"); }catch(e){ return "baseline"; }
+}
+function setMode(m){
+  try{ localStorage.setItem(LS_MODE_KEY, m); }catch(e){}
+}
+
+var sessionMode = "baseline";
+var state = null;
+var goReviewContext = "complete"; // "complete" | "preGo"
+
+/* === Startup bootstrap (preview/content:// safe) ===
+   Some Android "content://" opens (Discord/Files previews) have triggered a TDZ error:
+   "Cannot access 'state' before initialization". Avoid global `let` bindings and
+   initialize deterministically here.
+*/
+(function bootstrap(){
+  // Ensure state is never null during boot (prevents TDZ/preview loaders + defaultState helpers)
+  if(!state){ state = { stores:[], types:[], items:[], lists:{}, version:1 }; }
+
+  var shared = null;
+  try{
+    if(getMode() === "shared"){ shared = loadShared(); }
+  }catch(e){ shared = null; }
+  sessionMode = shared ? "shared" : "baseline";
+  state = shared ? shared : loadBaseline();
+  if(!state){ state = defaultState(); }
+})();
+function save(){
+  try{
+    if(sessionMode === "shared"){
+      localStorage.setItem(LS_SHARED_KEY, JSON.stringify(state));
+      setMode("shared");
+    }else{
+      localStorage.setItem(LS_BASELINE_KEY, JSON.stringify(state));
+      setMode("baseline");
+    }
+  }catch(e){}
+}
+/* ===========================
+   Helpers
+   =========================== */
+var $ = (id)=> document.getElementById(id);
+var toastEl = $("toast");
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastEl._t);
+  toastEl._t = setTimeout(()=>toastEl.classList.remove("show"), 1200);
+}
+
+
+function syncModalOpen(){
+  // Lock background scroll whenever any overlay is visible
+  var any = !!document.querySelector('.overlay.show');
+  if(any) document.body.classList.add('modalOpen');
+  else document.body.classList.remove('modalOpen');
+  // Safety: never allow the tap shield to block overlays if it gets stuck visible
+  var ts = $('tapShield');
+  if(ts) ts.style.display = 'none';
+}
+
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c])); }
+function storeById(id){ return state.stores.find(s=>s.id===id); }
+function updateItemsStoreHeader(){
+  var el = document.getElementById('itemsTitle');
+  if(!el) return;
+  var s = activeStoreFilter ? storeById(activeStoreFilter) : null;
+  // keep header height stable when no store filter is active
+  el.innerHTML = s && s.name ? esc(s.name) : '&nbsp;';
+}
+
+function typeById(id){ return state.types.find(t=>t.id===id); }
+function typeOrderIndex(typeId){
+  var idx = state.types.findIndex(t=>t.id===typeId);
+  return idx < 0 ? 9999 : idx;
+}
+function selectedItems(){ return state.items.filter(i=>!!i.selected); }
+
+var ICON_NOTE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h10.8l2.2 2.2V20.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2z"/><path d="M16.8 3.5v3.3h3.3"/><path d="M7.5 10h9"/><path d="M7.5 13h9"/><path d="M7.5 16h7"/></svg>';
+
+var ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+var ICON_UP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var ICON_DOWN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+
+function attachLongPress(el, onLongPress){
+  var DELAY = 450;
+  var TH = 12;
+  let t = null;
+  let sx = 0, sy = 0;
+  let pressed = false;
+  let moved = false;
+
+  function ptFromEvent(e){
+    var touch = (e.touches && e.touches[0]) ? e.touches[0] : ((e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : e);
+    return touch || e;
+  }
+  function start(e){
+    // left-click only for mouse
+    if(typeof e.button === "number" && e.button !== 0) return;
+    pressed = true;
+    moved = false;
+    var pt = ptFromEvent(e);
+    sx = pt.clientX || 0;
+    sy = pt.clientY || 0;
+    clearTimeout(t);
+    t = setTimeout(function(){
+      if(!pressed || moved) return;
+      suppressRowClickUntil = Date.now() + 550;
+      try{ onLongPress(e); }catch(err){}
+    }, DELAY);
+  }
+  function move(e){
+    if(!pressed) return;
+    var pt = ptFromEvent(e);
+    var dx = Math.abs((pt.clientX||0) - sx);
+    var dy = Math.abs((pt.clientY||0) - sy);
+    if(dx > TH || dy > TH){
+      moved = true;
+      clearTimeout(t);
+    }
+  }
+  function end(){
+    pressed = false;
+    clearTimeout(t);
+  }
+
+  el.addEventListener("touchstart", start, {passive:true});
+  el.addEventListener("touchmove", move, {passive:true});
+  el.addEventListener("touchend", end, {passive:true});
+  el.addEventListener("touchcancel", end, {passive:true});
+
+  el.addEventListener("mousedown", start);
+  el.addEventListener("mousemove", move);
+  el.addEventListener("mouseup", end);
+  el.addEventListener("mouseleave", end);
+}
+
+function getGoRemainingCountForStore(storeId){
+  if(currentPage !== 'trip') return 1; // non-trip: never grey
+  var sel = selectedItems();
+  var c = 0;
+  for(var i=0;i<sel.length;i++){
+    var it = sel[i];
+    var ids = (it && it.storeIds) ? it.storeIds : [];
+    if(ids.indexOf(storeId) !== -1){
+      if(!isItemDoneForGo(it)) c++;
+    }
+  }
+  return c;
+}
+
+
+/* ===========================
+   View controller
+   =========================== */
+var pageItems = $("pageItems");
+var pageTrip  = $("pageTrip");
+var pageSetup = $("pageSetup");
+var tabItems = $("tabItems");
+var tabSetup = $("tabSetup");
+var tripFab  = $("tripFab");
+var tripPaperFab = $("tripPaperFab");
+var tripPaperBtn = $("tripPaperBtn");
+var paperOverlay = $("paperOverlay");
+var paperListEl = $("paperList");
+let isPaperMode = false;
+
+var itemsTypeFilterFab = $("itemsTypeFilterFab");
+var typeFilterBtn = $("typeFilterBtn");
+var typeFilterLabelEl = $("typeFilterLabel");
+var subtitle = $("subtitle");
+
+let currentPage = "items";
+
+// Setup navigation state (index | stores | filters | items | transfer)
+let setupSection = "index";
+
+function showSetupSection(which){
+  setupSection = which || "index";
+
+  var titleEl = document.getElementById("setupTitle");
+  var backBtn = document.getElementById("setupBackBtn");
+  var idx = document.getElementById("setupIndex");
+  var secStores = document.getElementById("setupSectionStores");
+  var secFilters = document.getElementById("setupSectionFilters");
+  var secItems = document.getElementById("setupSectionItems");
+  var secTransfer = document.getElementById("setupSectionTransfer");
+
+  // Show/hide blocks
+  if(idx) idx.style.display = (setupSection === "index") ? "" : "none";
+  if(secStores) secStores.style.display = (setupSection === "stores") ? "" : "none";
+  if(secFilters) secFilters.style.display = (setupSection === "filters") ? "" : "none";
+  if(secItems) secItems.style.display = (setupSection === "items") ? "" : "none";
+  if(secTransfer) secTransfer.style.display = (setupSection === "transfer") ? "" : "none";
+
+  // Header
+  var isIndex = (setupSection === "index");
+  if(backBtn) backBtn.style.display = isIndex ? "none" : "";
+  if(titleEl){
+    titleEl.textContent = "Setup";
+    titleEl.style.visibility = isIndex ? "visible" : "hidden";
+    }
+}
+
+
+let activeStoreFilter = null;
+let activeTypeFilter = null;
+let suppressRowClickUntil = 0; // prevents click after long-press
+
+// Bulk selection (applies to currently visible items under current Store+Type filters)
+function getVisibleItemsForBulk(){
+  // Use what is actually rendered in the Items list so bulk operations
+  // respect BOTH store dots and the type filter (and any future filters).
+  var list = document.getElementById("itemsList");
+  if(list){
+    var rows = list.querySelectorAll('.row[data-item-id]');
+    if(rows && rows.length){
+      var byId = {};
+      (state.items || []).forEach(function(it){ byId[it.id] = it; });
+      var vis = [];
+      rows.forEach(function(r){
+        var id = r.getAttribute('data-item-id');
+        if(id && byId[id]) vis.push(byId[id]);
+      });
+      return vis;
+    }
+  }
+  // Fallback: if list is not rendered yet, approximate using the current filters.
+  var items = (state.items || []).slice();
+  if(activeTypeFilter){ items = items.filter(function(it){ return (it.typeId||"") === activeTypeFilter; }); }
+  if(activeStoreFilter !== null){ items = items.filter(function(it){ return (it.storeIds||[]).includes(activeStoreFilter); }); }
+  return items;
+}
+function selectAllVisible(){
+  var vis = getVisibleItemsForBulk();
+  for (let i=0;i<vis.length;i++){ vis[i].selected = true; }
+  save();
+  renderItems();
+}
+function deselectAllVisible(){
+  var vis = getVisibleItemsForBulk();
+  for (let i=0;i<vis.length;i++){ vis[i].selected = false; vis[i].done = false; }
+  save();
+  renderItems();
+}
+function bindBulkButtons(){
+  var t = document.getElementById('btnToggleAll');
+  if (!t || t._bound) return;
+  t._bound = true;
+  t.addEventListener('click', function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    try { toggleAllVisible(); } catch(err) {}
+    // Force a paint/update in some mobile WebViews that otherwise wait for the next tap.
+    var raf = window.requestAnimationFrame || function(fn){ setTimeout(fn, 0); };
+    raf(function(){
+      try { renderItems(); } catch(err) {}
+      try { updateToggleAllLabel(); } catch(err) {}
+    });
+  }, {passive:false});
+}
+
+function toggleAllVisible(){
+  var visible = getVisibleItemsForBulk();
+  if (!visible || !visible.length) return;
+  var allSelected = visible.every(it => !!it.selected);
+  if (allSelected) {
+    deselectAllVisible();
+  } else {
+    selectAllVisible();
+  }
+  updateToggleAllLabel();
+}
+
+function updateToggleAllLabel(){
+  var t = document.getElementById('btnToggleAll');
+  if (!t) return;
+
+  var visible = getVisibleItemsForBulk();
+  var allSelected = (visible && visible.length)
+    ? visible.every(function(it){ return !!(it && it.selected); })
+    : false;
+
+  // Simple, modern icon-only toggle:
+  // - When NOT all selected: show "select all" (checkbox with check)
+  // - When all selected: show "clear" (box with X)
+  var ICON_SELECT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm0 16H5V5h14v14Zm-8.4-4.4L7.8 11.8l-1.4 1.4 4.2 4.2 7.6-7.6-1.4-1.4-6.2 6.2Z"/></svg>';
+  var ICON_CLEAR  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm0 16H5V5h14v14Zm-3.3-9.9-1.4-1.4L12 9.9 9.7 7.7 8.3 9.1 10.6 11.4 8.3 13.7l1.4 1.4 2.3-2.3 2.3 2.3 1.4-1.4-2.3-2.3 2.3-2.3Z"/></svg>';
+
+  t.innerHTML = allSelected ? ICON_CLEAR : ICON_SELECT;
+  t.dataset.mode = allSelected ? 'clear' : 'select';
+  t.setAttribute('aria-label', allSelected ? 'Clear all visible selections' : 'Select all visible');
+  t.title = t.getAttribute('aria-label');
+}
+
+
+function updateTripChromeH(){
+  // One continuous tint region behind the GO header chrome (palette/tabs + trip bar).
+  try{
+    if(!document.body.classList.contains('tripMode')) return;
+    var trip = document.getElementById('pageTrip');
+    if(!trip) return;
+    var h = trip.querySelector('.h');
+    if(!h) return;
+    var r = h.getBoundingClientRect();
+    var pad = 12; // slightly past the bar for a "bookmark" feel
+    var H = Math.max(0, Math.round(r.bottom + pad));
+    document.body.style.setProperty('--tripChromeH', H + 'px');
+  }catch(e){}
+}
+
+function setActiveTab(){
+  tabItems.classList.toggle("active", currentPage==="items");
+  tabSetup.classList.toggle("active", currentPage==="setup");
+  pageItems.classList.toggle("show", currentPage==="items");
+  pageTrip.classList.toggle("show",  currentPage==="trip");
+  pageSetup.classList.toggle("show", currentPage==="setup");
+  
+// FAB: Items = Go, Trip = Share
+tripFab.classList.toggle("show", currentPage==="items" || currentPage==="trip");
+tripFab.classList.toggle("goMode", currentPage==="items");
+tripFab.classList.toggle("shareMode", currentPage==="trip");
+if(currentPage==="items"){
+  tripFab.setAttribute("aria-label","Go");
+  tripFab.title = "Go";
+}else if(currentPage==="trip"){
+  tripFab.setAttribute("aria-label","Share");
+  tripFab.title = "Share";
+}
+  if(itemsTypeFilterFab){
+    itemsTypeFilterFab.classList.toggle("show", currentPage==="items");
+    itemsTypeFilterFab.setAttribute("aria-hidden", currentPage==="items" ? "false" : "true");
+  }
+  // Keep GO button above the type filter pill (no overlap)
+  document.body.classList.toggle('typeFilterFabVisible', currentPage==='items');
+  if(tripPaperFab){ tripPaperFab.classList.toggle('show', currentPage==='trip'); tripPaperFab.setAttribute('aria-hidden', currentPage==='trip' ? 'false' : 'true'); }
+  if(currentPage!=='trip' && isPaperMode){ setPaperMode(false); }
+
+
+
+  document.body.classList.toggle('tripMode', currentPage==='trip');
+  if(currentPage==='trip'){ updateTripChromeH(); }
+
+  renderStoreFilters();
+}
+
+/* ===========================
+   Paper Mode (Trip)
+   =========================== */
+function setPaperMode(on){
+  if(on && !document.body.classList.contains("tripMode")) return;
+  isPaperMode = !!on;
+  document.body.classList.toggle('paperMode', isPaperMode);
+  if(paperOverlay){
+    paperOverlay.setAttribute('aria-hidden', isPaperMode ? 'false' : 'true');
+  }
+  updateTripPaperButton();
+  if(isPaperMode){ renderPaper(); }
+}
+function updateTripPaperButton(){
+  if(!tripPaperBtn) return;
+  // Swap icon + styling: Paper (neutral) -> Back (red outline)
+  if(isPaperMode){
+    tripPaperBtn.classList.remove('paperMiniBtn');
+    tripPaperBtn.classList.add('backBtnRed');
+    tripPaperBtn.setAttribute('aria-label','Back');
+    tripPaperBtn.title = 'Back';
+    tripPaperBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 L8.5 12 L14.5 18.5"/></svg>';
+  }else{
+    tripPaperBtn.classList.remove('backBtnRed');
+    tripPaperBtn.classList.add('paperMiniBtn');
+    tripPaperBtn.setAttribute('aria-label','Page');
+    tripPaperBtn.title = 'Page';
+    tripPaperBtn.textContent = 'Page';
+  }
+}
+function qtyLabelForPaper(it){
+  var q = parseInt(it && it.qty, 10) || 0;
+  var unit = (it && it.unit) ? String(it.unit).trim() : "";
+  if(q && q > 0 && unit) return String(q) + unit;
+  if(q && q > 1) return "x" + String(q);
+  return "";
+}
+
+function escHtml(s){
+  return String(s)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
+
+function renderPaper(){
+  var listEl = document.getElementById("paperList");
+  if(!listEl) return;
+
+  // Use the same selection + store filter logic as Go mode
+  var sel = (typeof selectedItems==="function") ? selectedItems() : [];
+  var visibleSel = (typeof activeStoreFilter!=="undefined" && activeStoreFilter) ? sel.filter(function(it){
+    return (it.storeIds||[]).indexOf(activeStoreFilter) !== -1;
+  }) : sel;
+
+  if(!visibleSel || !visibleSel.length){
+    listEl.innerHTML = '<div class="paperEmpty">No items.</div>';
+    return;
+  }
+
+  // Build store -> items map in Setup store order (same as renderTrip)
+  var storeMap = new Map();
+  if(window.state && Array.isArray(state.stores)){
+    state.stores.forEach(function(s){ storeMap.set(s.id, []); });
+  }
+  visibleSel.forEach(function(it){
+    (it.storeIds||[]).forEach(function(sid){
+      if(!storeMap.has(sid)) storeMap.set(sid, []);
+      storeMap.get(sid).push(it);
+    });
+  });
+
+  // Stores to render = those with any items, with active store first if set
+  var stores = (window.state && Array.isArray(state.stores) ? state.stores.slice() : [])
+    .map(function(s){
+      var arr = storeMap.get(s.id) || [];
+      return { sid:s.id, sname:s.name||"", items:arr };
+    })
+    .filter(function(x){ return x.items && x.items.length>0; });
+
+  var renderStores = stores.slice();
+  if(window.state && state.goActiveStoreId){
+    renderStores.sort(function(a,b){
+      if(a.sid===state.goActiveStoreId) return -1;
+      if(b.sid===state.goActiveStoreId) return 1;
+      return 0;
+    });
+  }
+
+  // Type order follows Setup types list (same as Go), with __none__ last
+  var typeOrder = [];
+  if(window.state && Array.isArray(state.types)){
+    for(var ti=0; ti<state.types.length; ti++){
+      typeOrder.push(state.types[ti].id);
+    }
+  }
+
+  function getItemQty(it){
+    var qty = parseInt(it.qty != null ? it.qty : (it.q != null ? it.q : (it.quantity != null ? it.quantity : 1)), 10);
+    if(isNaN(qty) || qty < 1) qty = 1;
+    return qty;
+  }
+  function getVarQty(it, vlab){
+    var vk = String(vlab||"").toLowerCase();
+    var vq = (it && it.vqty && typeof it.vqty==="object") ? (parseInt(it.vqty[vk],10) || 1) : 1;
+    if(isNaN(vq) || vq < 1) vq = 1;
+    return vq;
+  }
+
+  var seen = new Set();
+  var out = [];
+
+  for(var si=0; si<renderStores.length; si++){
+    var st = renderStores[si];
+
+    // Group items by typeId (or __none__) to preserve Go ordering
+    var grouped = new Map();
+    for(var ii=0; ii<st.items.length; ii++){
+      var it = st.items[ii];
+      if(!it) continue;
+      if(typeof isItemDoneForGo==="function" && isItemDoneForGo(it)) continue;
+      var key = it.typeId || "__none__";
+      if(!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(it);
+    }
+    if(grouped.size===0) continue;
+
+    var keys = Array.from(grouped.keys()).sort(function(a,b){
+      if(a==="__none__" && b!=="__none__") return 1;
+      if(b==="__none__" && a!=="__none__") return -1;
+      var ia = typeOrder.indexOf(a);
+      var ib = typeOrder.indexOf(b);
+      if(ia===-1 && ib!==-1) return 1;
+      if(ib===-1 && ia!==-1) return -1;
+      if(ia===-1 && ib===-1) return a.localeCompare(b);
+      return ia-ib;
+    });
+
+    for(var ki=0; ki<keys.length; ki++){
+      var arr = grouped.get(keys[ki]) || [];
+      for(var ji=0; ji<arr.length; ji++){
+        var it2 = arr[ji];
+        var baseId = it2.id || it2._id || (it2.name||it2.title||"")+":"+String(ji);
+
+        var name = (it2.name || it2.title || it2.item || "").toString().trim();
+        if(!name) continue;
+
+        // Variants: show item name only on the first line; subsequent lines show only variant name aligned.
+        var vars = (typeof getSelectedVariantsForList==="function") ? getSelectedVariantsForList(it2) : [];
+        if(vars && vars.length){
+          for(var vi=0; vi<vars.length; vi++){
+            var vlab = String(vars[vi]||"").trim();
+            if(!vlab) continue;
+            var rowId = baseId + "::v::" + vlab.toLowerCase();
+            if(seen.has(rowId)) continue;
+            seen.add(rowId);
+
+            var vq = getVarQty(it2, vlab);
+            var itemCell = (vi===0) ? escHtml(name) : '';
+            var detailCell = escHtml(vlab);
+
+            out.push(
+              '<div class="paperRow">' +
+                '<div class="paperItem">' + itemCell + '</div>' +
+                '<div class="paperDetail">' + detailCell + '</div>' +
+                (vq > 1 ? ('<div class="paperQty">x' + vq + '</div>') : '<div class="paperQty paperQtyOff"></div>') +
+              '</div>'
+            );
+          }
+          continue;
+        }
+
+        // Non-variant item row (item spans item+detail columns)
+        var id2 = baseId + "::base";
+        if(seen.has(id2)) continue;
+        seen.add(id2);
+
+        var qty = getItemQty(it2);
+        out.push(
+          '<div class="paperRow paperRowSolo">' +
+            '<div class="paperItem">' + escHtml(name) + '</div>' +
+            '<div class="paperDetail"></div>' +
+            (qty > 1 ? ('<div class="paperQty">x' + qty + '</div>') : '<div class="paperQty paperQtyOff"></div>') +
+          '</div>'
+        );
+      }
+    }
+  }
+
+  if(!out.length){
+    listEl.innerHTML = '<div class="paperEmpty">No items.</div>';
+    return;
+  }
+  listEl.innerHTML = out.join("");
+}
+
+
+
+function goto(page){
+  // Prevent tap-through focusing inputs during navigation (avoids mobile zoom/reflow)
+  var shield = document.getElementById("tapShield");
+  if(shield){
+    shield.style.display = "block";
+    setTimeout(()=>{ shield.style.display = "none"; }, 250);
+  }
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+
+  currentPage = page;
+  if(page !== "setup"){
+    setupSection = "index";
+    // Keep Setup subpages from remaining visible when leaving Setup via swipe
+    var idxEl = document.getElementById("setupIndex");
+    var secStores = document.getElementById("setupSectionStores");
+    var secFilters = document.getElementById("setupSectionFilters");
+    var secItems = document.getElementById("setupSectionItems");
+    var secTransfer = document.getElementById("setupSectionTransfer");
+    if(idxEl) idxEl.style.display = "";
+    if(secStores) secStores.style.display = "none";
+    if(secFilters) secFilters.style.display = "none";
+    if(secItems) secItems.style.display = "none";
+    if(secTransfer) secTransfer.style.display = "none";
+  }
+  if(page === "setup") { showSetupSection("index"); }
+  setActiveTab();
+  renderAll();
+  if(page==='trip'){
+    // GO should always start at the top of the list (avoid inheriting scroll from Items)
+    try{
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      window.scrollTo(0,0);
+    }catch(e){}
+  }
+}
+
+tabItems.addEventListener("click", ()=>goto("items"));
+tabSetup.addEventListener("click", ()=>goto("setup"));
+
+
+// Setup index navigation
+var setupBackBtn = document.getElementById("setupBackBtn");
+var navStores = document.getElementById("navStores");
+var navFilters = document.getElementById("navFilters");
+var navItems = document.getElementById("navItems");
+var navTransfer = document.getElementById("navTransfer");
+
+if(setupBackBtn){
+  setupBackBtn.addEventListener("click", ()=>{ showSetupSection("index"); });
+}
+if(navStores){
+  navStores.addEventListener("click", ()=>{ showSetupSection("stores"); });
+}
+if(navFilters){
+  navFilters.addEventListener("click", ()=>{ showSetupSection("filters"); });
+}
+if(navItems){
+  navItems.addEventListener("click", ()=>{ showSetupSection("items"); });
+}
+if(navTransfer){
+  navTransfer.addEventListener("click", ()=>{ showSetupSection("transfer"); });
+}
+
+
+// Trip header: + starts a new list (and exits shared session if active)
+var btnNewList = $("btnNewList");
+if(btnNewList){
+  btnNewList.innerHTML = ICON_PLUS;
+  btnNewList.addEventListener("click", function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    startNewListFromTrip();
+  }, false);
+}
+
+// Items page type filter button (above Go)
+if(typeFilterBtn){
+  typeFilterBtn.addEventListener("click", (ev)=>{
+    ev.preventDefault();
+    ev.stopPropagation();
+    if(window.openTypeFilter){ window.openTypeFilter(); }
+  }, {passive:false});
+}
+
+
+// Trip page Paper/Back mini button (beneath Share)
+if(tripPaperBtn){
+  tripPaperBtn.addEventListener("click", function(ev){
+    ev.preventDefault();
+    ev.stopPropagation();
+    if(!document.body.classList.contains("tripMode")) return;
+    setPaperMode(!isPaperMode);
+  }, {passive:false});
+}
+tripFab.addEventListener("click", ()=>{
+  if(currentPage === "items"){
+    // Before entering Go mode, show a read-only review so the user can confirm.
+    try{ window.clearTypeFilter && window.clearTypeFilter(); }catch(e){}
+    openGoReview("preGo");
+    return;
+  }
+  if(currentPage === "trip"){
+    try{ shareCurrentSessionFile(); }catch(e){}
+    return;
+  }
+});
+
+/* ===========================
+   Swipe nav (Items <-> Setup)
+   =========================== */
+(function enableSwipeNav(){
+  let sx = 0, sy = 0, tracking = false, locked = false;
+
+  function shouldIgnoreTarget(t){
+    if(!t) return false;
+    var tag = (t.tagName || "").toLowerCase();
+    return tag === "input" || tag === "textarea" || tag === "button" || t.closest(".overlay");
+  }
+
+  // We intentionally use passive:false on touchmove so we can prevent horizontal panning.
+  document.addEventListener("touchstart", (e)=>{
+    var t = e.target;
+    if(shouldIgnoreTarget(t)) return;
+    if(currentPage !== "items" && currentPage !== "setup") return;
+
+    var touch = e.touches && e.touches[0];
+    if(!touch) return;
+
+    tracking = true;
+    locked = false;
+    sx = touch.clientX;
+    sy = touch.clientY;
+  }, { passive:true });
+
+  document.addEventListener("touchmove", (e)=>{
+    if(!tracking) return;
+    if(currentPage !== "items" && currentPage !== "setup") return;
+
+    var t = e.target;
+    if(shouldIgnoreTarget(t)) return;
+
+    var touch = e.touches && e.touches[0];
+    if(!touch) return;
+
+    var dx = touch.clientX - sx;
+    var dy = touch.clientY - sy;
+
+    // Decide once per gesture whether this is primarily horizontal.
+    if(!locked){
+      if(Math.abs(dx) > 10 || Math.abs(dy) > 10){
+        locked = (Math.abs(dx) > Math.abs(dy));
+      }
+    }
+
+    // If the user is moving horizontally, block the browser's sideways panning.
+    if(locked){
+      e.preventDefault();
+    }
+  }, { passive:false });
+
+  document.addEventListener("touchend", (e)=>{
+    if(!tracking) return;
+    tracking = false;
+
+    var touch = e.changedTouches && e.changedTouches[0];
+    if(!touch) return;
+
+    var dx = touch.clientX - sx;
+    var dy = touch.clientY - sy;
+
+    // Only treat as a nav swipe if it's a strong horizontal gesture.
+    if(Math.abs(dx) < 60) return;
+    if(Math.abs(dy) > 50) return;
+
+    // Nav is ONLY Items <-> Setup
+    if(currentPage === "items" && dx < 0) goto("setup");
+    else if(currentPage === "setup" && dx > 0) goto("items");
+  }, { passive:true });
+})();
+
+/* ===========================
+   Render: Items
+   =========================== */
+var itemsList = $("itemsList");
+var itemsMeta = $("itemsMeta");
+
+
+function getSelectedVariantsForList(it){
+  var out = [];
+  if(it && it.selVars && Array.isArray(it.selVars)) out = it.selVars.slice();
+  else if(it && it.variant) out = [String(it.variant).trim()];
+  // sanitize
+  out = out.map(function(v){ return String(v||"").trim(); }).filter(function(v){ return !!v; });
+  // de-dupe
+  if(out.length){
+    var seen = {};
+    var clean = [];
+    out.forEach(function(v){
+      var k = v.toLowerCase();
+      if(seen[k]) return;
+      seen[k] = true;
+      clean.push(v);
+    });
+    out = clean;
+  }
+  return out;
+}
+function isItemDoneForGo(it){
+  var vars = getSelectedVariantsForList(it);
+  if(!vars.length) return !!it.done;
+  var map = (it && it.vdone && typeof it.vdone === "object") ? it.vdone : {};
+  for(var i=0;i<vars.length;i++){
+    var k = String(vars[i]).toLowerCase();
+    if(!map[k]) return false;
+  }
+  return true;
+}
+function setAllVariantsDone(it, done){
+  var vars = getSelectedVariantsForList(it);
+  if(!vars.length){
+    it.done = !!done;
+    return;
+  }
+  if(!it.vdone || typeof it.vdone !== "object") it.vdone = {};
+  vars.forEach(function(v){
+    it.vdone[String(v).toLowerCase()] = !!done;
+  });
+  // Also reflect the aggregate in it.done for other parts of the UI
+  it.done = isItemDoneForGo(it);
+}
+function toggleOneVariantDone(it, variantLabel){
+  var vars = getSelectedVariantsForList(it);
+  if(!vars.length) return;
+  var key = String(variantLabel||"").toLowerCase();
+  if(!it.vdone || typeof it.vdone !== "object") it.vdone = {};
+  it.vdone[key] = !it.vdone[key];
+  it.done = isItemDoneForGo(it);
+}
+
+function renderItems(){
+  updateItemsStoreHeader();
+  var total = state.items.length;
+  var sel = selectedItems().length;
+  itemsMeta.textContent = sel ? `${sel} selected` : `${total} total`;
+  var tLbl = document.getElementById('typeFilterLabel');
+  if(tLbl) tLbl.textContent = (window.typeNameById ? window.typeNameById(activeTypeFilter) : "All");
+
+  itemsList.innerHTML = "";
+
+  if(total === 0){
+    var d = document.createElement("div");
+    d.className = "muted";
+    d.style.padding = "12px 6px";
+    d.textContent = "No items.";
+    itemsList.appendChild(d);
+    updateToggleAllLabel();
+    return;
+  }
+
+  var items = [...state.items].sort((a,b)=>a.name.localeCompare(b.name));
+  let visibleItems = activeStoreFilter ? items.filter(it=> (it.storeIds||[]).includes(activeStoreFilter)) : items;
+  if(activeTypeFilter){ visibleItems = visibleItems.filter(it=> (it.typeId||"") === activeTypeFilter); }
+  visibleItems.forEach(it=>{
+
+    var row = document.createElement("div");
+    var q = parseInt(it.qty, 10);
+    var unit = (it.unit ? String(it.unit).trim() : "");
+    let qtyLabel = "";
+    if (q && q > 0 && unit) { qtyLabel = String(q) + unit; }
+    else if (q && q > 1) { qtyLabel = "x" + q; }
+    var qtyHtml = qtyLabel ? ('<span class="qtyBadge" aria-label="Quantity ' + esc(qtyLabel) + '">' + esc(qtyLabel) + '</span>') : "";
+    var selVars = getSelectedVariantsForList(it);
+    if(selVars && selVars.length){ qtyLabel = ""; qtyHtml = ""; }
+    // Variants render as sub-rows (keeps right-side tools aligned)
+    var hasNote = !!(it.note && String(it.note).trim()) || !!qtyLabel || (selVars && selVars.length) || !!it.attn;
+    row.className = "row" + (it.selected ? " selected" : "") + (hasNote ? " hasNote" : "");
+    row.setAttribute("data-item-id", it.id);
+    row.innerHTML = `
+      <div class="left">
+        <div class="pill" aria-hidden="true"></div>
+        <div class="nameWrap">
+          <span class="name" title="${esc(it.name)}">${esc(it.name)}</span>
+        </div>
+      </div>
+      <div class="tools">
+        ${qtyHtml}
+        ${it.attn ? `<span class="attnPin" aria-label="Attention">!</span>` : ``}
+        <button class="noteBtn" type="button" aria-label="Edit note" title="Note">${ICON_NOTE}</button>
+      </div>
+    `;
+
+    var noteBtn = row.querySelector(".noteBtn");
+    if(noteBtn){
+      noteBtn.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        openNoteModal(it.id);
+      }, false);
+    }
+
+    attachLongPress(row, function(){
+      openNoteModal(it.id);
+    });
+
+    row.addEventListener("click", ()=>{
+      if(Date.now() < suppressRowClickUntil) return;
+      it.selected = !it.selected;
+      // Any new selection should start un-checked on the Trip page
+      it.done = false;
+      save();
+      renderItems();
+    });
+
+    itemsList.appendChild(row);
+
+    // Variant sub-rows (each selected variant behaves like an additional line item)
+    if(selVars && selVars.length){
+      selVars.forEach(function(vlab){
+        var sub = document.createElement("div");
+        sub.className = "row subRow";
+        sub.setAttribute("data-item-id", it.id);
+        sub.setAttribute("data-variant", vlab);
+        var vk = String(vlab).toLowerCase();
+        var vq = (it.vqty && typeof it.vqty==='object') ? (parseInt(it.vqty[vk],10)||1) : 1;
+        var vqHtml = ('<span class="qtyBadge" aria-label="Quantity x'+esc(String(vq))+'">x'+esc(String(vq))+'</span>');
+        sub.innerHTML = `
+          <div class="left">
+            <div class="nameWrap">
+              <span class="name" title="${esc(vlab)}">${esc(vlab)}</span>
+            </div>
+          </div>
+          <div class="tools">${vqHtml}</div>
+        `;
+        // Tap to edit variants/notes quickly
+        sub.addEventListener("click", function(e){
+          e.preventDefault();
+          e.stopPropagation();
+          openNoteModal(it.id);
+        }, false);
+        itemsList.appendChild(sub);
+      });
+    }
+
+  });
+  updateToggleAllLabel();
+}
+
+/* ===========================
+   Render: Trip
+   =========================== */
+var tripStores = $("tripStores");
+var tripMeta = $("tripMeta");
+
+
+// Go completion state elements
+var goCompleteOverlay = $("goCompleteOverlay");
+var completeBackBtn = $("completeBackBtn");
+var completeReviewBtn = $("completeReviewBtn");
+var completeNewListBtn = $("completeNewListBtn");
+
+var goReviewOverlay = $("goReviewOverlay");
+var goReviewList = $("goReviewList");
+var closeGoReviewBtn = $("closeGoReviewBtn");
+
+var preGoBackBtn = $("preGoBackBtn");
+var preGoConfirmBtn = $("preGoConfirmBtn");
+
+var goConfirmOverlay = $("goConfirmOverlay");
+var goConfirmTitle = $("goConfirmTitle");
+var goConfirmText = $("goConfirmText");
+var goConfirmCancelBtn = $("goConfirmCancelBtn");
+var goConfirmOkBtn = $("goConfirmOkBtn");
+
+// Snapshot of the list state when Go mode was entered (used by Back from completion)
+var goEntrySnapshot = null;
+
+function captureGoEntrySnapshot(){
+  try{
+    var selectedIds = selectedItems().map(function(it){ return it.id; });
+    goEntrySnapshot = { selectedIds: selectedIds };
+  }catch(e){
+    goEntrySnapshot = null;
+  }
+}
+function restoreFromGoEntrySnapshot(){
+  // Restore the list to how it was when Go mode was entered.
+  // If the snapshot is missing (e.g., page reload), fall back to clearing Go-mode completion state
+  // for currently-selected items so the user can recover.
+  var ids = (goEntrySnapshot && goEntrySnapshot.selectedIds && goEntrySnapshot.selectedIds.length)
+    ? goEntrySnapshot.selectedIds.slice()
+    : null;
+
+  // Fallback: use current selections if snapshot is unavailable.
+  if(!ids){
+    ids = (state.items||[]).filter(function(it){ return !!it.selected; }).map(function(it){ return it.id; });
+  }
+
+  var set = new Set(ids||[]);
+  (state.items||[]).forEach(function(it){
+    // If we have a real snapshot, restore selection exactly. Otherwise, keep existing selection.
+    if(goEntrySnapshot && goEntrySnapshot.selectedIds){
+      it.selected = set.has(it.id);
+    }
+    // Always clear Go-mode completion state.
+    it.done = false;
+    it.foundStoreId = null;
+    it.vopen = false;
+    try{ delete it.vdone; }catch(e){ it.vdone = {}; }
+  });
+  save();
+}
+
+function showGoCompletion(){
+  if(!goCompleteOverlay) return;
+  goCompleteOverlay.classList.add("show");
+  goCompleteOverlay.setAttribute("aria-hidden","false");
+  document.body.classList.add("completeOpen");
+  syncModalOpen();
+}
+function hideGoCompletion(){
+  if(!goCompleteOverlay) return;
+  goCompleteOverlay.classList.remove("show");
+  goCompleteOverlay.setAttribute("aria-hidden","true");
+  document.body.classList.remove("completeOpen");
+  syncModalOpen();
+}
+
+function openGoReview(context){
+  if(!goReviewOverlay) return;
+  goReviewContext = (context || "complete");
+  // Heading + controls differ depending on whether this is a pre-Go confirmation or a completed-list review.
+  var h = document.getElementById("goReviewHeading");
+  var foot = document.getElementById("goReviewPreGoFoot");
+  if(h) h.textContent = (goReviewContext === "preGo" ? "Review" : "Completed");
+  if(closeGoReviewBtn) closeGoReviewBtn.style.display = (goReviewContext === "preGo" ? "none" : "");
+  if(foot) foot.style.display = (goReviewContext === "preGo" ? "flex" : "none");
+  renderGoReview();
+  goReviewOverlay.classList.add("show");
+  syncModalOpen();
+  goReviewOverlay.setAttribute("aria-hidden","false");
+}
+
+function closeGoReview(){
+  if(!goReviewOverlay) return;
+  goReviewOverlay.classList.remove("show");
+  syncModalOpen();
+  goReviewOverlay.setAttribute("aria-hidden","true");
+}
+
+var goConfirmPending = null;
+function openGoConfirm(title, text, onConfirm){
+  if(!goConfirmOverlay) return;
+  goConfirmTitle.textContent = title || "Confirm";
+  goConfirmText.textContent = text || "";
+  goConfirmPending = (typeof onConfirm === "function") ? onConfirm : null;
+  goConfirmOverlay.classList.add("show");
+  syncModalOpen();
+  goConfirmOverlay.setAttribute("aria-hidden","false");
+}
+function closeGoConfirm(){
+  if(!goConfirmOverlay) return;
+  goConfirmOverlay.classList.remove("show");
+  syncModalOpen();
+  goConfirmOverlay.setAttribute("aria-hidden","true");
+  goConfirmPending = null;
+}
+
+function renderGoReview(){
+  if(!goReviewList) return;
+  goReviewList.innerHTML = "";
+  var sel = selectedItems().slice();
+  sel.sort(function(a,b){
+    return String(a.name||"").localeCompare(String(b.name||""));
+  });
+  var storeNameById = new Map();
+  (state.stores||[]).forEach(function(s){ storeNameById.set(s.id, s.name || "Store"); });
+
+  sel.forEach(function(it){
+    var sid = it.foundStoreId || ((it.storeIds||[])[0] || "");
+    var sname = sid ? (storeNameById.get(sid) || "Store") : "—";
+    var row = document.createElement("div");
+    row.className = "reviewRow";
+    var note = (it.note ? String(it.note).trim() : "");
+    var vars = getSelectedVariantsForList(it);
+    var variant = (vars && vars.length) ? vars.join(", ") : "";
+    var q = parseInt(it.qty, 10);
+    var unit = (it.unit ? String(it.unit).trim() : "");
+    var qtyLabel = "";
+    if(q && q>0){
+      qtyLabel = unit ? (String(q)+unit) : ("x"+String(q));
+    }
+    if(vars && vars.length){ qtyLabel = ""; }
+    var meta = [];
+    if(qtyLabel) meta.push(qtyLabel);
+    if(variant) meta.push(variant);
+    if(note) meta.push(note);
+    row.innerHTML = `
+      <div class="rLeft">
+        <div class="rName">${esc(it.name || "Item")}</div>
+        ${meta.length ? `<div class="rMeta">${esc(meta.join(" · "))}</div>` : ``}
+      </div>
+      <div class="rRight">${it.attn ? `<span class="attnPin" aria-label="Attention">!</span>` : ``}<span class="rStore">${esc(sname)}</span></div>
+    `;
+    goReviewList.appendChild(row);
+  });
+
+  if(!sel.length){
+    var d = document.createElement("div");
+    d.className = "muted";
+    d.textContent = "No items.";
+    goReviewList.appendChild(d);
+  }
+}
+
+// Wire completion overlay buttons
+if(completeBackBtn){
+  completeBackBtn.addEventListener("click", function(){
+    openGoConfirm(
+      "Back to list?",
+      "This returns you to the item list and restores it to how it was before Go mode.",
+      function(){
+        closeGoConfirm();
+        hideGoCompletion();
+        restoreFromGoEntrySnapshot();
+        goto("items");
+        toast("Back");
+      }
+    );
+  });
+}
+if(completeReviewBtn){
+  completeReviewBtn.addEventListener("click", function(){
+    openGoReview();
+  });
+}
+if(completeNewListBtn){
+  completeNewListBtn.addEventListener("click", function(){
+    openGoConfirm(
+      "Start a new list?",
+      "This clears selections and notes and returns you to your baseline state.",
+      function(){
+        closeGoConfirm();
+        hideGoCompletion();
+        // Use the same behavior as the Go-mode + action, but without a native confirm dialog.
+        try{ startNewListFromTrip_impl && startNewListFromTrip_impl(); }
+        catch(e){
+          try{ startNewListFromTrip && startNewListFromTrip(); }catch(_e){}
+        }
+      }
+    );
+  });
+}
+if(closeGoReviewBtn){
+  closeGoReviewBtn.addEventListener("click", function(){
+    closeGoReview();
+  });
+}
+
+if(preGoBackBtn){
+  preGoBackBtn.addEventListener("click", function(){
+    // Back out of the pre-Go review and return to item selection.
+    closeGoReview();
+  });
+}
+if(preGoConfirmBtn){
+  preGoConfirmBtn.addEventListener("click", function(){
+    // User confirmed: snapshot the current selections, then enter Go mode.
+    closeGoReview();
+    state.goActiveManual = false;
+    state.goActiveStoreId = null;
+    save();
+    try{ captureGoEntrySnapshot(); }catch(e){}
+    goto("trip");
+  });
+}
+
+if(goConfirmCancelBtn){
+  goConfirmCancelBtn.addEventListener("click", function(){
+    closeGoConfirm();
+  });
+}
+if(goConfirmOkBtn){
+  goConfirmOkBtn.addEventListener("click", function(){
+    var fn = goConfirmPending;
+    // Always close the confirm overlay first so confirm actions cannot appear "stuck"
+    // if the callback forgets to close it.
+    closeGoConfirm();
+    if(fn){
+      try{ fn(); }catch(err){ console.error(err); }
+    }
+  });
+}
+// Close review/confirm by tapping the backdrop (consistent with other overlays)
+if(goReviewOverlay){
+  goReviewOverlay.addEventListener("click", function(e){
+    if(e.target === goReviewOverlay) closeGoReview();
+  });
+}
+if(goConfirmOverlay){
+  goConfirmOverlay.addEventListener("click", function(e){
+    if(e.target === goConfirmOverlay) closeGoConfirm();
+  });
+}
+
+
+function renderTrip(){
+  var sel = selectedItems();
+  var visibleSel = activeStoreFilter ? sel.filter(it=> (it.storeIds||[]).includes(activeStoreFilter)) : sel;
+  var doneCount = 0; for(var di=0; di<visibleSel.length; di++){ if(isItemDoneForGo(visibleSel[di])) doneCount++; }
+  tripMeta.textContent = visibleSel.length ? `${doneCount}/${visibleSel.length}` : "";
+
+  tripStores.innerHTML = "";
+  try{ hideGoCompletion(); }catch(e){}
+
+  if(visibleSel.length === 0){
+    var d = document.createElement("div");
+    d.className = "muted";
+    d.style.padding = "12px 6px";
+    d.textContent = "No selections.";
+    tripStores.appendChild(d);
+    return;
+  }
+
+  // Build store -> items map (multi-store items appear in each store)
+  // IMPORTANT: Go page store order must follow Setup store order.
+  var storeMap = new Map();
+  state.stores.forEach(s=>storeMap.set(s.id, []));
+  visibleSel.forEach(it=>{
+    (it.storeIds||[]).forEach(sid=>{
+      if(!storeMap.has(sid)) storeMap.set(sid, []);
+      storeMap.get(sid).push(it);
+    });
+  });
+
+  // Only show stores that still have at least one *remaining* (not-done) item.
+  // Store order is preserved from state.stores.
+  var stores = state.stores
+    .map(function(s){
+      var items = (storeMap.get(s.id) || []).slice();
+      var remaining = items.filter(function(it){ return !isItemDoneForGo(it); });
+      return { store:s, sid:s.id, items: items, remainingCount: remaining.length };
+    })
+    .filter(function(x){ return x.items.length>0; });
+
+  // If every selected item is already marked done, show a stable "All done" overlay
+  // instead of rendering a page with only minimized headers.
+  var overallRemaining = stores.reduce(function(acc, x){ return acc + (x.remainingCount||0); }, 0);
+  if(overallRemaining === 0){
+    try{ showGoCompletion(); }catch(e){}
+    subtitle.textContent = "";
+    return;
+  }
+
+  // Active store: default to the store with the most remaining items (tie-break: state order).
+  // Persisted in state.goActiveStoreId and can be manually overridden by tapping a store header.
+  var activeStoreId = state.goActiveStoreId;
+  var activeEntry = activeStoreId ? stores.find(function(x){ return x.sid === activeStoreId; }) : null;
+
+  function pickBestStoreId(){
+    var best = null;
+    for(var i=0;i<stores.length;i++){
+      var e = stores[i];
+      if(!e || !e.remainingCount || e.remainingCount<=0) continue;
+      if(!best || e.remainingCount > best.remainingCount) best = e;
+    }
+    return best ? best.sid : null;
+  }
+
+  // Auto-advance if no active store, active store no longer exists, or it is complete.
+  if(!activeEntry || (activeEntry.remainingCount||0) === 0){
+    // If the current active store is complete, resume auto mode.
+    state.goActiveManual = false;
+  }
+  // In auto mode, LOCK onto the current active store once shopping has begun.
+  // Only re-pick when there is no active store, the active store disappeared, or it is complete.
+  if(!state.goActiveManual){
+    if(!activeEntry || (activeEntry.remainingCount||0) === 0){
+      activeStoreId = pickBestStoreId();
+      state.goActiveStoreId = activeStoreId;
+      save();
+    }else{
+      // Keep existing active store without re-sorting mid-shop.
+      state.goActiveStoreId = activeStoreId;
+    }
+  }
+
+  // Header subtitle intentionally unused for minimalist UI
+  subtitle.textContent = "";
+
+  var renderStores = stores.slice();
+  if(state.goActiveStoreId){
+    renderStores.sort(function(a,b){
+      if(a.sid===state.goActiveStoreId) return -1;
+      if(b.sid===state.goActiveStoreId) return 1;
+      return 0;
+    });
+  }
+
+      function appendStore(entry, target){
+    if(!entry) return;
+        var store = entry.store;
+        var sid = entry.sid;
+        var items = entry.items;
+        var remainingCount = items.filter(function(it){ return !isItemDoneForGo(it); }).length;
+        // Group by type order (for lightweight spacing only; headings are hidden on Go page)
+        var grouped = new Map(); // typeId -> items
+        items
+          // Preserve original order; do not reorder when items are checked
+          .forEach(it=>{
+            var tid = it.typeId || "__none__";
+            if(!grouped.has(tid)) grouped.set(tid, []);
+            grouped.get(tid).push(it);
+          });
+
+        // Type keys ordered by type list order; unknown types last; __none__ last
+        var typeKeys = [...grouped.keys()].sort((a,b)=>{
+          if(a==="__none__" && b!=="__none__") return 1;
+          if(b==="__none__" && a!=="__none__") return -1;
+          return typeOrderIndex(a) - typeOrderIndex(b);
+        });
+
+        var block = document.createElement("div");
+        block.className = "store" + (sid===state.goActiveStoreId ? " open" : "");
+        block.innerHTML = `
+          <div class="storeHead">
+            <div class="l">
+              <div class="dot" style="background:${store.color}"></div>
+              <div class="storeName" title="${esc(store.name)}">${esc(store.name)}</div>
+            </div>
+            <div class="count" aria-label="${remainingCount} items">${remainingCount}</div>
+          </div>
+          <div class="groups"></div>
+        `;
+
+        var head = block.querySelector(".storeHead");
+        head.addEventListener("click", function(ev){
+          ev && ev.preventDefault && ev.preventDefault();
+          state.goActiveManual = true;
+          state.goActiveStoreId = sid;
+          save();
+          renderTrip();
+        });
+
+        var groupsEl = block.querySelector(".groups");
+
+        typeKeys.forEach((tid, idx)=>{
+          var arr = grouped.get(tid).slice();
+
+          // Instead of headings, add a subtle vertical gap between type groups.
+          if(idx>0){
+            var gap = document.createElement("div");
+            gap.className = "typeGap";
+            groupsEl.appendChild(gap);
+          }
+
+          arr.forEach(it=>{
+            var r = document.createElement("div");
+            var q = parseInt(it.qty, 10);
+        var unit = (it.unit ? String(it.unit).trim() : "");
+        let qtyLabel = "";
+        if (q && q > 0 && unit) { qtyLabel = String(q) + unit; }
+        else if (q && q > 1) { qtyLabel = "x" + q; }
+            var qtyHtml = qtyLabel ? ('<span class="qtyBadge" aria-label="Quantity ' + esc(qtyLabel) + '">' + esc(qtyLabel) + '</span>') : "";
+            var selVars = getSelectedVariantsForList(it);
+            if(selVars && selVars.length){ qtyLabel = ""; qtyHtml = ""; }
+            var hasNote = !!(it.note && String(it.note).trim()) || !!qtyLabel || (selVars && selVars.length) || !!it.attn;
+            var doneAgg = isItemDoneForGo(it);
+            r.className = "row tripRow" + (doneAgg ? " checked" : "") + (hasNote ? " hasNote" : "");
+            r.innerHTML = `
+              <div class="left">
+                <div class="nameWrap">
+                  <span class="name" title="${esc(it.name)}">${esc(it.name)}</span>
+                </div>
+              </div>
+              <div class="tools">
+                    ${qtyHtml}
+    ${ ( ((selVars && selVars.length) || it.attn) && !doneAgg ) ? `<span class="attnPin goBang" role="button" tabindex="0" aria-label="Details" title="Details">!</span>` : ``}
+
+                <button class="noteBtn" type="button" aria-label="Edit note" title="Note">${ICON_NOTE}</button>
+              </div>
+            `;
+
+            var noteBtn = r.querySelector(".noteBtn");
+            if(noteBtn){
+              noteBtn.addEventListener("click", function(e){
+                e.preventDefault();
+                e.stopPropagation();
+                openNoteModal(it.id);
+              }, false);
+            }
+
+    var bangBtn = r.querySelector(".goBang");
+    if(bangBtn){
+      bangBtn.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        var selVars2 = getSelectedVariantsForList(it);
+        if(selVars2 && selVars2.length){
+          it.vopen = !it.vopen;
+          save();
+          renderTrip();
+        }
+      }, false);
+    }
+
+            attachLongPress(r, function(){
+              openNoteModal(it.id);
+            });
+
+            r.addEventListener("click", ()=>{
+              if(Date.now() < suppressRowClickUntil) return;
+              var varsHere = getSelectedVariantsForList(it);
+              if(varsHere && varsHere.length){
+                var nextAll = !isItemDoneForGo(it);
+                setAllVariantsDone(it, nextAll);
+                if(nextAll){ it.foundStoreId = sid; }
+                else{ it.foundStoreId = null; }
+              }else{
+                var next = !it.done;
+                it.done = next;
+                if(next){ it.foundStoreId = sid; }
+                else{ it.foundStoreId = null; }
+              }
+              save();
+              renderTrip();
+            });
+            groupsEl.appendChild(r);
+            if(selVars && selVars.length && it.vopen){
+              selVars.forEach(function(vlab){
+                var sub = document.createElement('div');
+                var k = String(vlab).toLowerCase();
+                var vdone = (it.vdone && typeof it.vdone === 'object') ? !!it.vdone[k] : false;
+                sub.className = 'row tripRow subRow' + (vdone ? ' checked' : '');
+                var vk = String(vlab).toLowerCase();
+                var vq = (it.vqty && typeof it.vqty==='object') ? (parseInt(it.vqty[vk],10)||1) : 1;
+                var vqHtml = ('<span class="qtyBadge" aria-label="Quantity x'+esc(String(vq))+'">x'+esc(String(vq))+'</span>');
+                sub.innerHTML = `
+                  <div class="left">
+                    <div class="nameWrap">
+                      <span class="name" title="${esc(vlab)}">${esc(vlab)}</span>
+                    </div>
+                  </div>
+                  <div class="tools">${vqHtml}</div>
+                `;
+                sub.addEventListener('click', function(e){
+                  e.preventDefault(); e.stopPropagation();
+                  toggleOneVariantDone(it, vlab);
+                  // If everything is now done, remember the store for review
+                  if(isItemDoneForGo(it)){ it.foundStoreId = sid; }
+                  else{ it.foundStoreId = null; }
+                  save();
+                  renderTrip();
+                }, false);
+                groupsEl.appendChild(sub);
+              });
+            }
+          });
+        });
+    target.appendChild(block);
+  }
+
+  // Render: active store first (open), all others grouped in a single collapsed region
+  var activeEntry = null;
+  var collapsedEntries = [];
+  renderStores.forEach(function(entry){
+    if(entry.sid===state.goActiveStoreId) activeEntry = entry;
+    else collapsedEntries.push(entry);
+  });
+
+  appendStore(activeEntry || collapsedEntries.shift(), tripStores);
+
+  if(collapsedEntries.length){
+    var collapsedWrap = document.createElement("div");
+    collapsedWrap.className = "collapsedStores";
+    collapsedEntries.forEach(function(entry){
+      appendStore(entry, collapsedWrap);
+    });
+    tripStores.appendChild(collapsedWrap);
+  }
+}
+
+/* ===========================
+   Session + list utilities
+   =========================== */
+
+// Clear ONLY list/session fields (keeps setup such as stores, filters, units)
+function clearListState(s){
+  (s.items || []).forEach(function(it){
+    it.selected = false;
+    it.done = false;
+    try{ delete it.note; }catch(e){ it.note = ""; }
+    try{ delete it.attn; }catch(e){ it.attn = false; }
+    try{ delete it.attn; }catch(e){ it.attn = false; }
+    try{ delete it.qty; }catch(e){ it.qty = 1; }
+    try{ delete it.variant; }catch(e){ it.variant = ""; }
+    try{ delete it.selVars; }catch(e){ it.selVars = []; }
+    try{ delete it.vdone; }catch(e){ it.vdone = {}; }
+  });
+  return s;
+}
+
+// Strip list/session fields to create a clean "backup" payload
+function stripListFieldsForBackup(s){
+  var out = {
+    version: 1,
+    stores: (s.stores || []).map(function(st){
+      return { id: st.id, name: st.name, color: st.color };
+    }),
+    types: (s.types || []).map(function(t){
+      return { id: t.id, name: t.name, order: (typeof t.order === "number" ? t.order : 0) };
+    }),
+    items: (s.items || []).map(function(it){
+      var o = {
+        id: it.id,
+        name: it.name,
+        storeIds: (it.storeIds || []).slice(),
+        typeId: it.typeId || null
+      };
+      var u = (it.unit ? String(it.unit).trim() : "");
+      if(u) o.unit = u;
+      // Variants (setup-only; list state is stored separately)
+      var vars = (it.variants && Array.isArray(it.variants)) ? it.variants.map(function(v){ return String(v||"").trim(); }).filter(function(v){ return !!v; }) : [];
+      // de-dupe (case-insensitive)
+      if(vars.length){
+        var seen = {};
+        var clean = [];
+        vars.forEach(function(v){
+          var k = v.toLowerCase();
+          if(seen[k]) return;
+          seen[k] = true;
+          clean.push(v);
+        });
+        if(clean.length) o.variants = clean;
+      }
+      return o;
+    })
+  };
+  // normalize order
+  out.types.sort(function(a,b){ return (a.order||0) - (b.order||0); });
+  out.types.forEach(function(t,i){ t.order = i; });
+  return out;
+}
+
+function startNewListFromTrip_impl(){
+
+  // If we are in a temporary shared session, discard it and restore baseline.
+  if(sessionMode === "shared"){
+    sessionMode = "baseline";
+    try{ localStorage.removeItem(LS_SHARED_KEY); }catch(e){}
+    setMode("baseline");
+    state = loadBaseline();
+  }
+
+  // Starting a new list means clearing selections + notes + quantities.
+  clearListState(state);
+  save();
+
+  // Reset filters for a clean start.
+  activeStoreFilter = null;
+  try{ window.clearTypeFilter && window.clearTypeFilter(); }catch(e){ activeTypeFilter = null; }
+
+  goto("items");
+  toast("New list");
+}
+
+function startNewListFromTrip(){
+  openGoConfirm(
+    "Start a new list?",
+    "This clears the current list and returns you to your setup.",
+    function(){
+      startNewListFromTrip_impl();
+    }
+  );
+}
+
+/* ===========================
+   Render: Setup (stores/types/items/share)
+   =========================== */
+var setupMeta = $("setupMeta");
+var storesList = $("storesList");
+var typesList = $("typesList");
+var inventoryList = $("inventoryList");
+
+function renderSetup(){
+  setupMeta.textContent = `${state.stores.length} stores · ${state.types.length} filters · ${state.items.length} items`;
+  var navStoresSub = document.getElementById("navStoresSub");
+  var navFiltersSub = document.getElementById("navFiltersSub");
+  var navItemsSub = document.getElementById("navItemsSub");
+  if(navStoresSub) navStoresSub.textContent = `${state.stores.length} stores`;
+  if(navFiltersSub) navFiltersSub.textContent = `${state.types.length} filters`;
+  if(navItemsSub) navItemsSub.textContent = `${state.items.length} items`;
+
+  // Background swatches (global)
+  var bgWrap = document.getElementById("bgSwatches");
+  if(bgWrap){
+    var current = (localStorage.getItem(LS_BG_KEY) || getComputedStyle(document.documentElement).getPropertyValue("--paper").trim() || "#f7f2e8").toLowerCase();
+    bgWrap.innerHTML = "";
+    BACKGROUNDS.forEach(bg=>{
+      var d = document.createElement("div");
+      d.className = "bgSwatch" + (current === bg.hex.toLowerCase() ? " active" : "");
+      d.style.background = bg.hex;
+      d.title = bg.name;
+      d.addEventListener("click", ()=>{
+        applyBackground(bg.hex);
+        renderAll();
+      });
+      bgWrap.appendChild(d);
+    });
+  }
+
+
+  // Stores
+  storesList.innerHTML = "";
+  if(state.stores.length === 0){
+    var d = document.createElement("div");
+    d.className = "muted";
+    d.style.padding = "10px 4px";
+    d.textContent = "No stores.";
+    storesList.appendChild(d);
+  }else{
+    state.stores.forEach((s, idx)=>{
+      var row = document.createElement("div");
+      row.className = "row";
+      row.style.cursor = "pointer";
+      row.title = "Tap to edit store";
+      row.innerHTML = `
+        <div class="left">
+          <div class="dot" style="background:${s.color}"></div>
+          <div class="name" title="${esc(s.name)}">${esc(s.name)}</div>
+        </div>
+        <div class="rowChevron" aria-hidden="true">›</div>
+      `;
+      row.addEventListener("click", ()=> openStoreColorPicker(s.id));
+      storesList.appendChild(row);
+    });
+  }
+
+  // Types
+  typesList.innerHTML = "";
+  if(state.types.length === 0){
+    var d = document.createElement("div");
+    d.className = "muted";
+    d.style.padding = "10px 4px";
+    d.textContent = "No filters.";
+    typesList.appendChild(d);
+  }else{
+    state.types.sort((a,b)=>a.order-b.order).forEach((t, idx)=>{
+      var row = document.createElement("div");
+      row.className = "row";
+      row.style.cursor = "pointer";
+      row.title = "Tap to edit filter";
+      row.innerHTML = `
+        <div class="left">
+          <div class="pill" style="width:12px;height:12px;border-radius:999px;background:rgba(0,0,0,.06);" aria-hidden="true"></div>
+          <div class="name" title="${esc(t.name)}">${esc(t.name)}</div>
+        </div>
+        <div class="actions">
+          <button class="orderBtn" data-act="up" type="button" aria-label="Move up" title="Move up">${ICON_UP}</button>
+          <button class="orderBtn" data-act="down" type="button" aria-label="Move down" title="Move down">${ICON_DOWN}</button>
+        </div>
+      `;
+
+      // Row tap opens edit modal (rename/remove)
+      row.addEventListener("click", function(){
+        openTypeModal(t.id);
+      }, false);
+
+      var upBtn = row.querySelector('[data-act="up"]');
+      var downBtn = row.querySelector('[data-act="down"]');
+
+      upBtn.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if(idx===0) return;
+        var prev = state.types[idx-1];
+        var cur = state.types[idx];
+        var tmp = prev.order; prev.order = cur.order; cur.order = tmp;
+        state.types.sort((a,b)=>a.order-b.order);
+        state.types.forEach((x,i)=>x.order=i);
+        save(); renderAll();
+      }, false);
+
+      downBtn.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if(idx===state.types.length-1) return;
+        var next = state.types[idx+1];
+        var cur = state.types[idx];
+        var tmp = next.order; next.order = cur.order; cur.order = tmp;
+        state.types.sort((a,b)=>a.order-b.order);
+        state.types.forEach((x,i)=>x.order=i);
+        save(); renderAll();
+      }, false);
+
+      typesList.appendChild(row);
+    });
+  }
+
+  // Inventory list (edit items)
+  inventoryList.innerHTML = "";
+  var items = [...state.items].sort((a,b)=>a.name.localeCompare(b.name));
+  if(items.length===0){
+    var d = document.createElement("div");
+    d.className = "muted";
+    d.style.padding = "10px 4px";
+    d.textContent = "No items.";
+    inventoryList.appendChild(d);
+  }else{
+    items.forEach(it=>{
+      var row = document.createElement("div");
+      row.className = "row";
+      row.style.cursor = "pointer";
+      row.title = "Tap to edit item";
+      row.innerHTML = `
+        <div class="left">
+          <div class="pill" style="width:12px;height:12px;border-radius:999px;background:rgba(0,0,0,.06);" aria-hidden="true"></div>
+          <div class="name" title="${esc(it.name)}">${esc(it.name)}</div>
+        </div>
+        <div class="rowChevron" aria-hidden="true">›</div>
+      `;
+
+      row.addEventListener("click", function(){
+        openItemModal(it.id);
+      });
+
+      // Power-user: long-press the row to edit (keeps consistency with Notes)
+      try{ attachLongPress(row, function(){ openItemModal(it.id); }); }catch(e){}
+
+      inventoryList.appendChild(row);
+    });
+  }
+}
+
+/* ===========================
+   Setup actions: add stores/types
+   =========================== */
+$("addStoreBtn").addEventListener("click", ()=>{
+  var v = $("newStoreName").value.trim();
+  if(!v) return;
+  if(state.stores.some(s=>s.name.toLowerCase()===v.toLowerCase())){ toast("Exists"); return; }
+  var color = palette[state.stores.length % palette.length];
+  state.stores.push({ id: uid("s"), name:v, color });
+  $("newStoreName").value = "";
+  save(); renderAll();
+});
+$("newStoreName").addEventListener("keydown", (e)=>{ if(e.key==="Enter") $("addStoreBtn").click(); });
+
+$("addTypeBtn").addEventListener("click", ()=>{
+  var v = $("newTypeName").value.trim();
+  if(!v) return;
+  if(state.types.some(t=>t.name.toLowerCase()===v.toLowerCase())){ toast("Exists"); return; }
+  state.types.push({ id: uid("t"), name:v, order: state.types.length });
+  $("newTypeName").value = "";
+  save(); renderAll();
+});
+$("newTypeName").addEventListener("keydown", (e)=>{ if(e.key==="Enter") $("addTypeBtn").click(); });
+
+/* ===========================
+   Item modal (add/edit)
+   =========================== */
+var itemModalOverlay = $("itemModalOverlay");
+var itemModalTitle = $("itemModalTitle");
+var itemNameInput = $("itemNameInput");
+var itemUnitInput = $("itemUnitInput");
+var itemStoresChips = $("itemStoresChips");
+var itemTypeChips = $("itemTypeChips");
+var itemVariantInput = $("itemVariantInput");
+var addVariantBtn = $("addVariantBtn");
+var itemVariantsChips = $("itemVariantsChips");
+var saveItemBtn = $("saveItemBtn");
+var deleteItemBtn = $("deleteItemBtn");
+var closeItemModalBtn = $("closeItemModalBtn");
+$("openNewItemBtn").addEventListener("click", ()=>openItemModal(null));
+
+/* ===========================
+   Filter modal (rename / remove)
+   =========================== */
+var typeModalOverlay = $("typeModalOverlay");
+var typeModalTitle = $("typeModalTitle");
+var typeNameInput = $("typeNameInput");
+var closeTypeModalBtn = $("closeTypeModalBtn");
+var saveTypeBtn = $("saveTypeBtn");
+var deleteTypeBtn = $("deleteTypeBtn");
+let editingTypeId = null;
+
+function normalizeTypeOrders(){
+  (state.types||[]).sort((a,b)=>(a.order||0)-(b.order||0));
+  (state.types||[]).forEach((x,i)=>{ x.order = i; });
+}
+
+function openTypeModal(typeId){
+  var t = (state.types||[]).find(x=>x.id===typeId);
+  if(!t || !typeModalOverlay) return;
+  editingTypeId = typeId;
+  if(typeModalTitle) typeModalTitle.textContent = "Edit Filter";
+  if(typeNameInput) typeNameInput.value = t.name || "";
+  typeModalOverlay.classList.add("show");
+  typeModalOverlay.setAttribute("aria-hidden","false");
+  setTimeout(function(){
+    try{ typeNameInput.focus(); typeNameInput.select(); }catch(e){}
+  }, 0);
+}
+
+function closeTypeModal(){
+  if(!typeModalOverlay) return;
+  typeModalOverlay.classList.remove("show");
+  typeModalOverlay.setAttribute("aria-hidden","true");
+  editingTypeId = null;
+}
+
+if(closeTypeModalBtn && !closeTypeModalBtn.__bound){
+  closeTypeModalBtn.__bound = true;
+  closeTypeModalBtn.addEventListener("click", function(e){
+    e.preventDefault(); e.stopPropagation();
+    closeTypeModal();
+  }, false);
+}
+if(typeModalOverlay && !typeModalOverlay.__bound){
+  typeModalOverlay.__bound = true;
+  typeModalOverlay.addEventListener("click", function(e){
+    if(e.target === typeModalOverlay) closeTypeModal();
+  }, false);
+}
+if(typeNameInput && !typeNameInput.__bound){
+  typeNameInput.__bound = true;
+  typeNameInput.addEventListener("keydown", function(e){
+    if(e.key === "Escape") closeTypeModal();
+  }, false);
+  typeNameInput.addEventListener("keydown", function(e){
+    if(e.key === "Enter"){
+      e.preventDefault();
+      try{ saveTypeBtn && saveTypeBtn.click(); }catch(err){}
+    }
+  }, false);
+}
+
+if(saveTypeBtn && !saveTypeBtn.__bound){
+  saveTypeBtn.__bound = true;
+  saveTypeBtn.addEventListener("click", function(e){
+    e.preventDefault(); e.stopPropagation();
+    if(!editingTypeId) return;
+    var t = (state.types||[]).find(x=>x.id===editingTypeId);
+    if(!t) return;
+
+    var name = String(typeNameInput ? typeNameInput.value : t.name).trim();
+    if(!name){ toast("Name required"); return; }
+
+    var clash = (state.types||[]).find(x=>x.id!==t.id && String(x.name||"").toLowerCase()===name.toLowerCase());
+    if(clash){ toast("Exists"); return; }
+
+    t.name = name;
+    save();
+    closeTypeModal();
+    renderAll();
+    toast("Saved");
+  }, false);
+}
+
+if(deleteTypeBtn && !deleteTypeBtn.__bound){
+  deleteTypeBtn.__bound = true;
+  deleteTypeBtn.addEventListener("click", function(e){
+    e.preventDefault(); e.stopPropagation();
+    if(!editingTypeId) return;
+    var t = (state.types||[]).find(x=>x.id===editingTypeId);
+    if(!t) return;
+
+    openGoConfirm(
+      "Remove filter?",
+      'Remove filter "' + (t.name||"") + '"? Items using this filter will be set to None.',
+      function(){
+
+    // Clear any active filter selection that points at this type
+    if(activeTypeFilter === t.id) activeTypeFilter = null;
+
+    state.types = (state.types||[]).filter(x=>x.id!==t.id);
+    (state.items||[]).forEach(function(it){
+      if(it.typeId === t.id) it.typeId = null;
+    });
+    normalizeTypeOrders();
+
+    save();
+    closeTypeModal();
+    renderAll();
+    toast("Removed");
+      }
+    );
+  }, false);
+}
+
+/* ===========================
+   Notes (long-press items; icon visible only when note exists)
+   =========================== */
+var noteOverlay = $("noteOverlay");
+var noteTitle = $("noteTitle");
+var noteInput = $("noteInput");
+var noteVariantSection = $("noteVariantSection");
+var noteVariantChips = $("noteVariantChips");
+var noteVariantSelected = $("noteVariantSelected");
+var noteQtyMinus = $("noteQtyMinus");
+var noteQtyPlus = $("noteQtyPlus");
+var noteQtyVal = $("noteQtyVal");
+var noteFooterQty = $("noteFooterQty");
+var closeNoteBtn = $("closeNoteBtn");
+var clearNoteBtn = $("clearNoteBtn");
+var saveNoteBtn = $("saveNoteBtn");
+var attnNoteBtn = $("attnNoteBtn");
+
+var editingNoteItemId = null;
+var editingNoteQty = 1;
+var editingNoteVariants = [];
+var editingNoteVarQty = {};
+var editingNoteAttn = false;
+
+function syncAttnToggleUI(){
+if(!attnNoteBtn) return;
+
+// If variants are selected, attention is forced ON and cannot be turned off
+if(editingNoteVariants && editingNoteVariants.length){
+  editingNoteAttn = true;
+  attnNoteBtn.classList.add("on");
+  attnNoteBtn.setAttribute("aria-pressed","true");
+  attnNoteBtn.setAttribute("aria-disabled","true");
+  attnNoteBtn.disabled = true;
+  return;
+}
+
+attnNoteBtn.removeAttribute("aria-disabled");
+attnNoteBtn.disabled = false;
+
+if(editingNoteAttn){
+  attnNoteBtn.classList.add("on");
+  attnNoteBtn.setAttribute("aria-pressed","true");
+}else{
+  attnNoteBtn.classList.remove("on");
+  attnNoteBtn.setAttribute("aria-pressed","false");
+}
+}
+
+function setNoteQty(n){
+  n = parseInt(n, 10);
+  if(!n || isNaN(n)) n = 1;
+  if(n < 1) n = 1;
+  if(n > 99) n = 99;
+  editingNoteQty = n;
+  if(noteQtyVal) noteQtyVal.textContent = "x" + n;
+}
+
+
+
+function renderNoteVariants(it){
+  if(!noteVariantSection || !noteVariantChips) return;
+
+  var vars = (it && it.variants && Array.isArray(it.variants))
+    ? it.variants.map(function(v){ return String(v||"").trim(); }).filter(function(v){ return !!v; })
+    : [];
+
+  // De-dupe (case-insensitive)
+  if(vars.length){
+    var seen = {};
+    var clean = [];
+    vars.forEach(function(v){
+      var k = v.toLowerCase();
+      if(seen[k]) return;
+      seen[k] = true;
+      clean.push(v);
+    });
+    vars = clean;
+  }
+
+  if(!vars.length){
+    noteVariantSection.style.display = "none";
+    noteVariantChips.innerHTML = "";
+    editingNoteVariants = [];
+    return;
+  }
+
+  // Ensure selections still exist
+  if(editingNoteVariants && editingNoteVariants.length){
+    var okSet = {};
+    vars.forEach(function(v){ okSet[String(v).toLowerCase()] = true; });
+    editingNoteVariants = editingNoteVariants
+      .map(function(v){ return String(v||"").trim(); })
+      .filter(function(v){ return !!v && okSet[String(v).toLowerCase()]; });
+  }else{
+    editingNoteVariants = [];
+  }
+
+  noteVariantSection.style.display = "block";
+  noteVariantChips.innerHTML = "";
+  // Variant chips (multi-select): tap to add/remove from the list
+  vars.forEach(function(v){
+    var isOn = false;
+    for(var i=0;i<editingNoteVariants.length;i++){
+      if(String(editingNoteVariants[i]).toLowerCase() === String(v).toLowerCase()){ isOn = true; break; }
+    }
+
+    var chip = document.createElement("div");
+    chip.className = "chip" + (isOn ? " selected" : "");
+    chip.textContent = v;
+    chip.addEventListener("click", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var key = String(v).toLowerCase();
+      var next = [];
+      var removed = false;
+      for(var i=0;i<editingNoteVariants.length;i++){
+        var cur = String(editingNoteVariants[i]||"").trim();
+        if(!cur) continue;
+        if(!removed && cur.toLowerCase() === key){
+          removed = true;
+          continue;
+        }
+        next.push(cur);
+      }
+      if(!removed){
+        next.push(v);
+        if(!editingNoteVarQty) editingNoteVarQty = {};
+        if(!editingNoteVarQty[key] || editingNoteVarQty[key] < 1) editingNoteVarQty[key] = 1;
+      }else{
+        if(editingNoteVarQty && editingNoteVarQty[key]){ try{ delete editingNoteVarQty[key]; }catch(e){} }
+      }
+      editingNoteVariants = next;
+      renderNoteVariants(it);
+    }, false);
+    noteVariantChips.appendChild(chip);
+  
+  // Selected variants list with per-variant quantity (simple, thumb-friendly)
+  if(noteVariantSelected){
+    // Keep only qty entries for currently selected variants
+    var selSet = {};
+    (editingNoteVariants||[]).forEach(function(v){ selSet[String(v).toLowerCase()] = true; });
+    Object.keys(editingNoteVarQty||{}).forEach(function(k){ if(!selSet[k]) delete editingNoteVarQty[k]; });
+    // Ensure defaults
+    (editingNoteVariants||[]).forEach(function(v){
+      var k = String(v).toLowerCase();
+      if(!editingNoteVarQty[k] || editingNoteVarQty[k] < 1) editingNoteVarQty[k] = 1;
+    });
+
+    noteVariantSelected.innerHTML = "";
+    if(editingNoteVariants && editingNoteVariants.length){
+      noteVariantSelected.style.display = "block";
+      editingNoteVariants.forEach(function(vlab){
+        var k = String(vlab).toLowerCase();
+        var curQ = parseInt(editingNoteVarQty[k],10) || 1;
+        var row = document.createElement("div");
+        row.className = "varSelRow";
+        row.innerHTML = '<div class="lbl" title="'+esc(vlab)+'">'+esc(vlab)+'</div>'
+          + '<div class="q">'
+          +   '<button class="miniBtn vMinus" type="button" aria-label="Decrease '+esc(vlab)+'">−</button>'
+          +   '<div class="miniVal">x'+curQ+'</div>'
+          +   '<button class="miniBtn vPlus" type="button" aria-label="Increase '+esc(vlab)+'">+</button>'
+          + '</div>';
+        row.querySelector(".vMinus").addEventListener("click", function(e){
+          e.preventDefault(); e.stopPropagation();
+          var cur = (parseInt(editingNoteVarQty[k],10) || 1);
+          if(cur <= 1){
+            // If user decrements to 0, remove the variant from the list selection
+            var key2 = String(vlab).toLowerCase();
+            var next2 = [];
+            for(var ii=0; ii<(editingNoteVariants||[]).length; ii++){
+              var vv = String(editingNoteVariants[ii]||"").trim();
+              if(!vv) continue;
+              if(vv.toLowerCase() === key2) continue;
+              next2.push(vv);
+            }
+            editingNoteVariants = next2;
+            if(editingNoteVarQty && editingNoteVarQty[key2]){ try{ delete editingNoteVarQty[key2]; }catch(ex){} }
+            renderNoteVariants(it);
+            return;
+          }
+          curQ = cur - 1;
+          if(curQ < 1) curQ = 1;
+          editingNoteVarQty[k] = curQ;
+          renderNoteVariants(it);
+        }, false);
+        row.querySelector(".vPlus").addEventListener("click", function(e){
+          e.preventDefault(); e.stopPropagation();
+          curQ = (parseInt(editingNoteVarQty[k],10)||1) + 1;
+          if(curQ > 99) curQ = 99;
+          editingNoteVarQty[k] = curQ;
+          renderNoteVariants(it);
+        }, false);
+        noteVariantSelected.appendChild(row);
+      });
+    }else{
+      noteVariantSelected.style.display = "none";
+    }
+
+    // When variants are selected, base item qty is redundant (qty is per-variant)
+    if(noteFooterQty){
+      if(editingNoteVariants && editingNoteVariants.length){
+        noteFooterQty.style.display = "none";
+        setNoteQty(1);
+      }else{
+        noteFooterQty.style.display = "";
+      }
+    }
+  }
+});
+
+  // Keep attention toggle in sync with variant selection
+  try{ syncAttnToggleUI(); }catch(e){}
+}
+
+
+
+function openNoteModal(itemId){
+  var it = (state.items||[]).find(x=>x.id===itemId);
+  if(!it || !noteOverlay) return;
+  editingNoteItemId = itemId;
+  noteTitle.textContent = "Note: " + (it.name || "Item");
+  noteInput.value = (it.note || "");
+  setNoteQty((typeof it.qty === "number" || typeof it.qty === "string") ? it.qty : 1);
+  // Selected variants for this list (list-state): supports multiple.
+  // Back-compat: if a legacy single variant exists, treat it as selected.
+  editingNoteVariants = (it.selVars && Array.isArray(it.selVars)) ? it.selVars.slice() : [];
+  if((!editingNoteVariants || !editingNoteVariants.length) && it.variant){
+    editingNoteVariants = [ String(it.variant).trim() ];
+  }
+  // Variant quantities (per selected variant)
+  editingNoteVarQty = (it.vqty && typeof it.vqty === 'object') ? JSON.parse(JSON.stringify(it.vqty)) : {};
+  (editingNoteVariants||[]).forEach(function(v){ var k=String(v).toLowerCase(); if(!editingNoteVarQty[k]) editingNoteVarQty[k]=1; });
+  editingNoteAttn = !!it.attn;
+  syncAttnToggleUI();
+  renderNoteVariants(it);
+  noteOverlay.classList.add("show");
+  noteOverlay.setAttribute("aria-hidden","false");
+  // IMPORTANT: Do not auto-focus the textarea on open.
+  // Auto-focus can cause a brief keyboard pop/dismiss on mobile due to the
+  // long-press/touchend click sequence. User can tap the field when ready.
+}
+function closeNoteModal(){
+  if(!noteOverlay) return;
+  noteOverlay.classList.remove("show");
+  noteOverlay.setAttribute("aria-hidden","true");
+  editingNoteItemId = null;
+  editingNoteQty = 1;
+  editingNoteVariants = [];
+  if(noteVariantSection) noteVariantSection.style.display = "none";
+  if(noteVariantChips) noteVariantChips.innerHTML = "";
+}
+function saveNote(silent){
+  if(!editingNoteItemId) return;
+  var it = (state.items||[]).find(x=>x.id===editingNoteItemId);
+  if(!it) return;
+
+  var txt = String(noteInput.value || "").trim();
+  if(txt){
+    it.note = txt;
+  }else{
+    try{ delete it.note; }catch(e){ it.note = ""; }
+  }
+
+  // Quantity: store only when > 1 (default is 1)
+  if(editingNoteQty && editingNoteQty > 1){
+    it.qty = editingNoteQty;
+  }else{
+    try{ delete it.qty; }catch(e){ it.qty = 1; }
+  }
+
+
+  // Variants selected for this list (stored as list state)
+  var vSelList = (editingNoteVariants && Array.isArray(editingNoteVariants))
+    ? editingNoteVariants.map(function(v){ return String(v||"").trim(); }).filter(function(v){ return !!v; })
+    : [];
+
+  // De-dupe (case-insensitive) while preserving order
+  if(vSelList.length){
+    var seenV = {};
+    var cleanV = [];
+    vSelList.forEach(function(v){
+      var k = v.toLowerCase();
+      if(seenV[k]) return;
+      seenV[k] = true;
+      cleanV.push(v);
+    });
+    vSelList = cleanV;
+  }
+
+  // If variants are selected, suppress base item quantity
+  if(vSelList.length){
+    try{ delete it.qty; }catch(e){ it.qty = 1; }
+  }
+
+  if(vSelList.length){
+    it.selVars = vSelList;
+    // Keep legacy single field in sync for older builds (first selected)
+    it.variant = vSelList[0];
+  }else{    try{ delete it.variant; }catch(e){ it.variant = ""; }
+    try{ delete it.selVars; }catch(e){ it.selVars = []; }
+    try{ delete it.vdone; }catch(e){ it.vdone = {}; }
+  }
+
+  
+// Attention pin
+// - Manual toggle in Notes still matters
+// - BUT if any variants are selected, attention is forced ON (variants imply "more info")
+if(vSelList && vSelList.length){
+  it.attn = true;
+}else{
+  if(editingNoteAttn){
+    it.attn = true;
+  }else{
+    try{ delete it.attn; }catch(e){ it.attn = false; }
+  }
+}
+
+// Persist per-variant quantities (only for selected variants)
+if(vSelList && vSelList.length){
+  var nextVq = {};
+  for(var qi=0; qi<vSelList.length; qi++){
+    var vlab = String(vSelList[qi]||"").trim();
+    if(!vlab) continue;
+    var k = vlab.toLowerCase();
+    var qv = 1;
+    if(editingNoteVarQty && typeof editingNoteVarQty === "object"){
+      qv = parseInt(editingNoteVarQty[k], 10) || 1;
+    }
+    if(qv < 1) qv = 1;
+    nextVq[k] = qv;
+  }
+  it.vqty = nextVq;
+}else{
+  try{ delete it.vqty; }catch(e){ it.vqty = {}; }
+}
+
+// If the user set any note-related detail, auto-select the item for the list
+  // (adding a note implies intent to buy)
+  var hasAnyDetail = !!(txt) || (editingNoteQty && editingNoteQty > 1) || !!(vSelList && vSelList.length) || !!(editingNoteAttn);
+  if(hasAnyDetail){ it.selected = true; it.done = false; }
+  save();
+  closeNoteModal();
+  renderAll();
+  if(!silent){ toast("Saved"); }
+}
+
+if(closeNoteBtn){
+  closeNoteBtn.addEventListener("click", function(e){
+    e.preventDefault(); e.stopPropagation();
+    // Close acts as "save & close" to avoid accidental loss.
+    saveNote(true);
+  }, false);
+}
+if(clearNoteBtn){
+  clearNoteBtn.addEventListener("click", function(e){
+    e.preventDefault(); e.stopPropagation();
+    noteInput.value = "";
+    setNoteQty(1);
+    editingNoteVariants = [];
+    editingNoteAttn = false;
+    syncAttnToggleUI();
+    saveNote();
+  }, false);
+}
+if(saveNoteBtn){
+  saveNoteBtn.addEventListener("click", function(e){
+    e.preventDefault(); e.stopPropagation();
+    saveNote();
+  }, false);
+}
+
+if(attnNoteBtn){
+  attnNoteBtn.addEventListener("click", function(e){
+    e.preventDefault(); e.stopPropagation();
+    editingNoteAttn = !editingNoteAttn;
+    syncAttnToggleUI();
+  }, false);
+}
+
+if(noteQtyMinus){
+  noteQtyMinus.addEventListener("click", function(e){
+    e.preventDefault(); e.stopPropagation();
+    setNoteQty(editingNoteQty - 1);
+  }, false);
+}
+if(noteQtyPlus){
+  noteQtyPlus.addEventListener("click", function(e){
+    e.preventDefault(); e.stopPropagation();
+    setNoteQty(editingNoteQty + 1);
+  }, false);
+}
+if(noteOverlay && !noteOverlay.__bound){
+  noteOverlay.__bound = true;
+  noteOverlay.addEventListener("click", function(e){
+    if(e.target === noteOverlay) saveNote(true);
+  }, false);
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && noteOverlay.classList.contains("show")) saveNote(true);
+  }, false);
+  noteInput && noteInput.addEventListener("keydown", function(e){
+    if(e.key === "Escape") saveNote(true);
+  }, false);
+}
+
+
+let editingItemId = null;
+let draftStoreIds = new Set();
+let draftTypeId = null;
+let draftUnit = "";
+let draftVariants = [];
+
+function openItemModal(itemId){
+  editingItemId = itemId;
+  var it = itemId ? state.items.find(x=>x.id===itemId) : null;
+
+  itemModalTitle.textContent = it ? "Edit Item" : "New Item";
+  itemNameInput.value = it ? it.name : "";
+  draftStoreIds = new Set(it ? (it.storeIds||[]) : []);
+  draftTypeId = it ? (it.typeId || null) : null;
+  draftUnit = it && it.unit ? String(it.unit) : "";
+  // Variants (setup)
+  draftVariants = (it && it.variants && Array.isArray(it.variants))
+    ? it.variants.map(function(v){ return String(v||"").trim(); }).filter(function(v){ return !!v; })
+    : [];
+  // De-dupe variants (case-insensitive)
+  (function(){
+    var seen = {};
+    var clean = [];
+    draftVariants.forEach(function(v){
+      var k = v.toLowerCase();
+      if(seen[k]) return;
+      seen[k] = true;
+      clean.push(v);
+    });
+    draftVariants = clean;
+  })();
+  if(itemUnitInput) itemUnitInput.value = draftUnit;
+  if(itemVariantInput) itemVariantInput.value = "";
+
+  deleteItemBtn.style.display = it ? "inline-block" : "none";
+  renderItemModalChips();
+
+  itemModalOverlay.classList.add("show");
+  itemModalOverlay.setAttribute("aria-hidden","false");
+  setTimeout(()=>{ try{ itemNameInput.focus(); itemNameInput.select(); }catch(e){} }, 0);
+}
+
+function closeItemModal(){
+  itemModalOverlay.classList.remove("show");
+  itemModalOverlay.setAttribute("aria-hidden","true");
+  editingItemId = null;
+}
+
+function renderItemModalChips(){
+  // Stores chips
+  itemStoresChips.innerHTML = "";
+  state.stores.forEach(s=>{
+    var chip = document.createElement("div");
+    chip.className = "chip" + (draftStoreIds.has(s.id) ? " selected" : "");
+    chip.innerHTML = `<span class="miniDot" style="background:${s.color}"></span><span>${esc(s.name)}</span>`;
+    chip.addEventListener("click", ()=>{
+      if(draftStoreIds.has(s.id)) draftStoreIds.delete(s.id);
+      else draftStoreIds.add(s.id);
+      renderItemModalChips();
+    });
+    itemStoresChips.appendChild(chip);
+  });
+
+  // Type chips (single-select + "None")
+  itemTypeChips.innerHTML = "";
+  var none = document.createElement("div");
+  none.className = "chip" + (!draftTypeId ? " selected" : "");
+  none.textContent = "None";
+  none.addEventListener("click", ()=>{ draftTypeId = null; renderItemModalChips(); });
+  itemTypeChips.appendChild(none);
+
+  state.types.sort((a,b)=>a.order-b.order).forEach(t=>{
+    var chip = document.createElement("div");
+    chip.className = "chip" + (draftTypeId===t.id ? " selected" : "");
+    chip.textContent = t.name;
+    chip.addEventListener("click", ()=>{ draftTypeId = t.id; renderItemModalChips(); });
+    itemTypeChips.appendChild(chip);
+  });
+
+  // Variants chips (editable list)
+  if(itemVariantsChips){
+    itemVariantsChips.innerHTML = "";
+    if(!draftVariants || !draftVariants.length){
+      var d = document.createElement("div");
+      d.className = "muted";
+      d.style.padding = "6px 2px";
+      d.textContent = "No variants.";
+      itemVariantsChips.appendChild(d);
+    }else{
+      draftVariants.forEach(function(v, idx){
+        var chip = document.createElement("div");
+        chip.className = "chip";
+        chip.style.cursor = "default";
+        chip.innerHTML = '<span>' + esc(v) + '</span><span class="chipX" role="button" aria-label="Remove variant" title="Remove">×</span>';
+        var x = chip.querySelector(".chipX");
+        if(x){
+          x.addEventListener("click", function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            draftVariants.splice(idx, 1);
+            renderItemModalChips();
+          }, false);
+        }
+        itemVariantsChips.appendChild(chip);
+      });
+    }
+  }
+}
+
+
+closeItemModalBtn.addEventListener("click", closeItemModal);
+itemModalOverlay.addEventListener("click", (e)=>{ if(e.target===itemModalOverlay) closeItemModal(); });
+itemNameInput.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeItemModal(); });
+if(itemUnitInput){
+  itemUnitInput.addEventListener("input", ()=>{ draftUnit = itemUnitInput.value; });
+  itemUnitInput.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeItemModal(); });
+}
+
+function addDraftVariant(){
+  if(!itemVariantInput) return;
+  var v = String(itemVariantInput.value || "").trim();
+  if(!v) return;
+  var exists = (draftVariants || []).some(function(x){
+    return String(x || "").toLowerCase() === v.toLowerCase();
+  });
+  if(exists){
+    itemVariantInput.value = "";
+    renderItemModalChips();
+    return;
+  }
+  if(!draftVariants) draftVariants = [];
+  draftVariants.push(v);
+  itemVariantInput.value = "";
+  renderItemModalChips();
+}
+
+if(addVariantBtn && !addVariantBtn.__bound){
+  addVariantBtn.__bound = true;
+  addVariantBtn.addEventListener("click", function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    addDraftVariant();
+  }, false);
+}
+
+if(itemVariantInput && !itemVariantInput.__bound){
+  itemVariantInput.__bound = true;
+  itemVariantInput.addEventListener("keydown", function(e){
+    if(e.key === "Enter"){
+      e.preventDefault();
+      addDraftVariant();
+      return;
+    }
+    if(e.key === "Escape"){
+      closeItemModal();
+    }
+  }, false);
+}
+
+saveItemBtn.addEventListener("click", ()=>{
+  var name = itemNameInput.value.trim();
+  if(!name){ toast("Name required"); return; }
+
+  // Deduplicate by name (case-insensitive), but allow editing same item
+  var existing = state.items.find(x=>x.name.toLowerCase()===name.toLowerCase());
+  if(existing && existing.id !== editingItemId){
+    toast("Exists");
+    return;
+  }
+
+  var storeIds = [...draftStoreIds];
+  if(storeIds.length === 0){
+    // Minimalist guardrail: allow save, but item won't appear in trip stores
+    // (No hint text; user will learn by outcome.)
+  }
+
+  // Variants (setup)
+  var vars = (draftVariants && Array.isArray(draftVariants))
+    ? draftVariants.map(function(v){ return String(v||"").trim(); }).filter(function(v){ return !!v; })
+    : [];
+  // De-dupe variants (case-insensitive)
+  if(vars.length){
+    var seen = {};
+    var cleanVars = [];
+    vars.forEach(function(v){
+      var k = v.toLowerCase();
+      if(seen[k]) return;
+      seen[k] = true;
+      cleanVars.push(v);
+    });
+    vars = cleanVars;
+  }
+
+  if(editingItemId){
+    var it = state.items.find(x=>x.id===editingItemId);
+    if(!it) return;
+    it.name = name;
+    it.storeIds = storeIds;
+    it.typeId = draftTypeId;
+    var u = String(draftUnit||"").trim();
+    if(u){ it.unit = u; } else { try{ delete it.unit; }catch(e){ it.unit=""; } }
+    if(vars && vars.length){ it.variants = vars; } else { try{ delete it.variants; }catch(e){ it.variants = []; } }
+    // If the currently selected variant (list state) no longer exists, clear it.
+    if(it.variant){
+      var cur = String(it.variant||"").trim();
+      var ok = false;
+      if(cur && vars && vars.length){
+        for(var i=0;i<vars.length;i++){
+          if(String(vars[i]).toLowerCase() === cur.toLowerCase()){ ok = true; break; }
+        }
+      }
+      if(!ok){ try{ delete it.variant; }catch(e){ it.variant=""; } }
+    }
+  }else{
+    state.items.push({
+      id: uid("i"),
+      name,
+      storeIds,
+      typeId: draftTypeId,
+      selected: false,
+      unit: String(draftUnit||"").trim() || undefined,
+      variants: (vars && vars.length) ? vars : undefined
+    });
+    // remove undefined fields for cleaner exports
+    var last = state.items[state.items.length-1];
+    if(last && last.unit === undefined){ try{ delete last.unit; }catch(e){} }
+    if(last && last.variants === undefined){ try{ delete last.variants; }catch(e){} }
+  }
+  save();
+  closeItemModal();
+  renderAll();
+  toast("Saved");
+});
+
+deleteItemBtn.addEventListener("click", ()=>{
+  if(!editingItemId) return;
+  state.items = state.items.filter(x=>x.id!==editingItemId);
+  save();
+  closeItemModal();
+  renderAll();
+  toast("Removed");
+});
+
+/* ===========================
+   Share / Transfer (file-based)
+   =========================== */
+var shareBackupFileBtn = $("shareBackupFileBtn");
+var importListFileBtn = $("importListFileBtn");
+var importBackupFileBtn = $("importBackupFileBtn");
+var importFileInput = $("importFileInput");
+var _importExpect = "any";
+function loadSharedSession(inState){
+  try{
+    sessionMode = "shared";
+    state = normalizeState(inState);
+    localStorage.setItem(LS_SHARED_KEY, JSON.stringify(state));
+    setMode("shared");
+  }catch(e){
+    sessionMode = "shared";
+    state = normalizeState(inState);
+  }
+}
+
+function restoreBackup(inState){
+  try{
+    sessionMode = "baseline";
+    state = normalizeState(inState);
+    // backups are baseline-only; ensure no residual shared session sticks around
+    try{ localStorage.removeItem(LS_SHARED_KEY); }catch(_){}
+    localStorage.setItem(LS_BASELINE_KEY, JSON.stringify(state));
+    setMode("baseline");
+    clearListState(state);
+  }catch(e){
+    sessionMode = "baseline";
+    state = normalizeState(inState);
+    clearListState(state);
+  }
+}
+
+function _todayStamp(){
+  var d = new Date();
+  var y = d.getFullYear();
+  var m = String(d.getMonth()+1).padStart(2,"0");
+  var da = String(d.getDate()).padStart(2,"0");
+  return y+"-"+m+"-"+da;
+}
+
+function _makeJsonBlob(obj){
+  var json = JSON.stringify(obj, null, 2);
+  return new Blob([json], {type:"application/json"});
+}
+
+function _downloadBlob(blob, filename){
+  try{
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename || "iL.json";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){
+      try{ URL.revokeObjectURL(url); }catch(e){}
+      try{ a.remove(); }catch(e){}
+    }, 250);
+  }catch(e){
+    // last resort: open JSON in a new tab
+    try{
+      var reader = new FileReader();
+      reader.onload = function(){
+        try{ window.open(String(reader.result||""), "_blank"); }catch(e2){}
+      };
+      reader.readAsDataURL(blob);
+    }catch(e3){}
+  }
+}
+
+async function _tryShareFile(blob, filename, title){
+  // Native share with files (best UX on mobile). Falls back to download.
+  try{
+    if(!navigator.share) return false;
+    var file;
+    try{
+      file = new File([blob], filename, {type:"application/json"});
+    }catch(e){
+      file = null; // iOS/Safari edge cases
+    }
+    if(!file) return false;
+    if(navigator.canShare && !navigator.canShare({files:[file]})) return false;
+    await navigator.share({files:[file], title: title || "iL"});
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function shareCurrentSessionFile(){
+  var payload = { v: 1, kind: "shared", state: state };
+  var fname = "iL_share_list_" + _todayStamp() + ".json";
+  var blob = _makeJsonBlob(payload);
+  _tryShareFile(blob, fname, "iL Shared List").then(function(shared){
+    if(!shared) _downloadBlob(blob, fname);
+    toast(shared ? "Share sheet opened" : "List file saved");
+  });
+}
+
+function shareBackupFile(){
+  var base = loadBaseline();
+  var clean = stripListFieldsForBackup(base);
+  var payload = { v: 1, kind: "backup", state: clean };
+  var fname = "iL_backup_" + _todayStamp() + ".json";
+  var blob = _makeJsonBlob(payload);
+  _tryShareFile(blob, fname, "iL Backup").then(function(shared){
+    if(!shared) _downloadBlob(blob, fname);
+    toast(shared ? "Share sheet opened" : "Backup file saved");
+  });
+}
+
+function _handleImportedObject(obj){
+  if(!obj) throw new Error("Empty file");
+  // Accept wrapper formats; also accept raw state objects as "shared"
+  var kind = obj.kind;
+  var payloadState = obj.state;
+  if(obj.v !== 1 || !kind || !payloadState){
+    // raw state fallback (legacy)
+    kind = "shared";
+    payloadState = obj;
+  }
+
+  if(kind === "backup"){
+    openGoConfirm(
+      "Import backup?",
+      "This will replace your baseline (stores, filters, items, colors) on this device. Your current list selections will be cleared.",
+      function(){
+        restoreBackup(payloadState);
+        // After baseline import, return user to Setup index for orientation
+        goto("setup");
+        showSetupSection("index");
+        toast("Backup imported");
+      }
+    );
+    return;
+  }
+
+  // default: shared list (temporary)
+  openGoConfirm(
+    "Import shared list?",
+    "This will temporarily replace your current list and setup. Use the + button later to return to your own baseline.",
+    function(){
+      loadSharedSession(payloadState);
+      // Jump straight into Go mode for the imported temporary list
+      try{ activeStoreFilter = null; }catch(e){}
+      goto("trip");
+      renderAll();
+      toast("Shared list imported");
+    }
+  );
+}
+
+function importFromFile(file, expectType){
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    try{
+      var txt = String(reader.result || "");
+      var obj = JSON.parse(txt);
+
+      // Enforce intent based on which button the user pressed:
+      // - Import List should not accept a backup file
+      // - Import Backup should only accept a backup file
+      var kind = obj && obj.kind;
+      var payloadState = obj && obj.state;
+      var isWrapped = (obj && obj.v === 1 && kind && payloadState);
+      if(!isWrapped){
+        // Legacy/raw state is treated as a shared list (temporary)
+        kind = "shared";
+      }
+      if(expectType === "backup" && kind !== "backup"){
+        toast("That file is a shared list. Use Import List.");
+        return;
+      }
+      if(expectType === "shareList" && kind === "backup"){
+        toast("That file is a backup. Use Import Backup.");
+        return;
+      }
+
+      _handleImportedObject(obj);
+    }catch(e){
+      toast("Import failed");
+      console.warn("Import error:", e);
+    }
+  };
+  reader.onerror = function(){
+    toast("Import failed");
+  };
+  reader.readAsText(file);
+}
+
+if(shareBackupFileBtn){
+  shareBackupFileBtn.addEventListener("click", function(){
+    shareBackupFile();
+  });
+}
+if(importFileInput){
+  function _kickFilePick(expect){
+    _importExpect = expect || "any";
+    try{ importFileInput.value = ""; }catch(e){}
+    importFileInput.click();
+  }
+  if(importListFileBtn){
+    importListFileBtn.addEventListener("click", function(){ _kickFilePick("shareList"); });
+  }
+  if(importBackupFileBtn){
+    importBackupFileBtn.addEventListener("click", function(){ _kickFilePick("backup"); });
+  }
+  importFileInput.addEventListener("change", function(){
+    var f = importFileInput.files && importFileInput.files[0];
+    importFromFile(f, _importExpect);
+  });
+}
+/* ===========================
+   Render all
+   =========================== */
+
+function renderStoreFilters(){
+  var wrap = $("storeFilters");
+  if(!wrap) return;
+
+  // Hide filters on Setup page (keeps the header calm)
+  wrap.style.display = (currentPage === "setup") ? "none" : "flex";
+
+  wrap.innerHTML = "";
+	  var stores = ((state && state.stores) ? state.stores : []).slice();
+
+	  // Mobile ergonomics: show up to 7 chips in the header.
+	  // If more exist, keep the current active chip visible by swapping it into the last slot.
+	  if(stores.length > 7){
+	    var shown = stores.slice(0,7);
+	    var keepId = activeStoreFilter || (currentPage === 'trip' ? getActiveGoStoreId() : null);
+	    if(keepId){
+	      var keep = null;
+	      for(var k=0;k<stores.length;k++){ if(stores[k].id === keepId){ keep = stores[k]; break; } }
+	      var inShown = false;
+	      for(var j=0;j<shown.length;j++){ if(shown[j].id === keepId){ inShown = true; break; } }
+	      if(keep && !inShown){ shown[shown.length-1] = keep; }
+	    }
+	    stores = shown;
+	  }
+
+  // If no stores, nothing to filter.
+  if(!stores.length) return;
+
+  stores.forEach((s)=>{
+    var d = document.createElement("div");
+    d.className = "storeDot";
+    d.style.background = s.color || "#999";
+    d.title = s.name;
+
+    var isActive = (activeStoreFilter === s.id);
+    var hasActive = !!activeStoreFilter;
+
+    var emptyTrip = (currentPage === 'trip') && (getGoRemainingCountForStore(s.id) === 0);
+    if(emptyTrip) d.classList.add('empty');
+
+    if(hasActive && !isActive) d.classList.add("off");
+    if(isActive) d.classList.add("on");
+
+    d.addEventListener("click", ()=>{
+      // In Trip (Go) mode: grey chips indicate no remaining items for that store.
+      // Do not switch focus to an empty store.
+      if(currentPage === "trip"){
+        var rem = getGoRemainingCountForStore(s.id);
+        if(rem <= 0){
+          toast("No items for " + s.name);
+          return;
+        }
+      }
+
+      activeStoreFilter = (activeStoreFilter === s.id) ? null : s.id;
+
+      // In Trip (Go) mode, chip selection is also a store-focus/navigation control.
+      // Keep the visible expanded store header + items in sync with the selected chip.
+      if(currentPage === "trip" && activeStoreFilter){
+        state.goActiveStoreId = activeStoreFilter;
+        persistState();
+        try { window.scrollTo(0,0); } catch(e){}
+      }
+
+      renderAll();
+    });
+
+    wrap.appendChild(d);
+  });
+}
+
+function renderAll(){
+  // Subtitle is reserved for Trip best-first. Clear when not in Trip.
+  if(currentPage !== "trip") subtitle.textContent = "";
+
+  renderStoreFilters();
+
+  renderItems();
+  renderTrip();
+  renderSetup();
+}
+
+(function init(){
+  try{ var de=document.documentElement; de.className += ' app-ready'; de.className = de.className.replace(/\bguard-wait\b/g,''); }catch(e){}
+  bindBulkButtons();
+  loadBackground();
+  goto("items");
+})();
+
+
+// --- Store Color Picker (tap store name in Setup) ---
+let _colorPickerStoreId = null;
+
+function openStoreColorPicker(storeId){
+  var ov = document.getElementById("colorPickerOverlay");
+  
+  renderBackgroundSwatches();
+var sw = document.getElementById("colorPickerSwatches");
+  var title = document.getElementById("colorPickerTitle");
+  if(!ov || !sw || !title) return;
+
+  var s = ((state && state.stores) ? state.stores : []).find(x=>x.id===storeId);
+  if(!s) return;
+
+  _colorPickerStoreId = storeId;
+  title.textContent = `Color: ${s.name}`;
+
+  var used = usedStoreColors(s.id);
+
+  sw.innerHTML = "";
+  (palette||[]).forEach((c)=>{
+    var d = document.createElement("div");
+    d.className = "swatch";
+    d.style.background = c;
+
+    var isUsed = !!used[String(c).toLowerCase()];
+    if(isUsed) d.classList.add("used");
+    if(String(s.color||"").toLowerCase() === String(c).toLowerCase()) d.classList.add("selected");
+
+    d.addEventListener("click", ()=>{
+      if(isUsed) return;
+      s.color = c;
+      save();
+      renderAll();
+      closeStoreColorPicker();
+    });
+
+    sw.appendChild(d);
+  });
+
+  ov.classList.add("show");
+  ov.setAttribute("aria-hidden","false");
+}
+
+function closeStoreColorPicker(){
+  var ov = document.getElementById("colorPickerOverlay");
+  if(!ov) return;
+  ov.classList.remove("show");
+  ov.setAttribute("aria-hidden","true");
+  _colorPickerStoreId = null;
+}
+
+(function wireColorPicker(){
+  
+function typeNameById(id){
+  if(!id) return "All";
+  var t = (state.types||[]).find(x=>x.id===id);
+  return t ? t.name : "All";
+}
+
+function openTypeFilter(){
+  // Build list
+  var list = document.getElementById("typeFilterList");
+  list.innerHTML = "";
+
+  function addRow(id, name){
+    var row = document.createElement("button");
+    row.type = "button";
+    row.className = "typeFilterRow" + ((activeTypeFilter===id) ? " active" : "");
+    row.addEventListener("click", function(){
+      // Toggle: tapping current clears back to All
+      activeTypeFilter = (activeTypeFilter===id) ? null : id;
+      closeTypeFilter();
+      renderItems();
+    }, false);
+
+    var left = document.createElement("div");
+    left.className = "left";
+
+    var dot = document.createElement("div");
+    dot.className = "typeFilterDot";
+
+    var nm = document.createElement("div");
+    nm.className = "typeFilterName";
+    nm.textContent = name;
+
+    left.appendChild(dot);
+    left.appendChild(nm);
+
+    var ck = document.createElement("div");
+    ck.className = "typeFilterCheck";
+    ck.textContent = (activeTypeFilter===id) ? "✓" : "";
+
+    row.appendChild(left);
+    row.appendChild(ck);
+    list.appendChild(row);
+  }
+
+  addRow(null, "All");
+
+  // Use types in their current order (user-controlled)
+  (state.types||[]).forEach(t=>{
+    addRow(t.id, t.name);
+  });
+
+  // Update label
+  var lbl = document.getElementById("typeFilterLabel");
+  if(lbl) lbl.textContent = typeNameById(activeTypeFilter);
+
+  var ov = document.getElementById("typeFilterOverlay");
+  ov.classList.add("open");
+  ov.setAttribute("aria-hidden","false");
+}
+
+function closeTypeFilter(){
+  var ov = document.getElementById("typeFilterOverlay");
+  ov.classList.remove("open");
+  ov.setAttribute("aria-hidden","true");
+  // Sync label
+  var lbl = document.getElementById("typeFilterLabel");
+  if(lbl) lbl.textContent = typeNameById(activeTypeFilter);
+}
+
+function bind(){
+    var ov = document.getElementById("colorPickerOverlay");
+    var closeBtn = document.getElementById("colorPickerClose");
+
+    // Close (✕)
+    if(closeBtn && !closeBtn.__hl_bound){
+      closeBtn.__hl_bound = true;
+      closeBtn.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        closeStoreColorPicker();
+      }, false);
+    }
+
+    // Store actions (rename / remove) inside the color sheet
+    var renameBtn = document.getElementById("colorPickerRenameBtn");
+    var removeBtn = document.getElementById("colorPickerRemoveBtn");
+
+    if(renameBtn && !renameBtn.__hl_bound){
+      renameBtn.__hl_bound = true;
+      renameBtn.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if(!_colorPickerStoreId) return;
+        var s = state.stores.find(function(x){ return x.id === _colorPickerStoreId; });
+        if(!s) return;
+        var name = prompt("Rename store", s.name || "");
+        if(!name) return;
+        name = name.trim();
+        if(!name) return;
+        s.name = name;
+        save();
+        renderAll();
+        var titleEl = document.getElementById("colorPickerTitle");
+        if(titleEl) titleEl.textContent = "Color: " + s.name;
+      }, false);
+    }
+
+    if(removeBtn && !removeBtn.__hl_bound){
+      removeBtn.__hl_bound = true;
+      removeBtn.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if(!_colorPickerStoreId) return;
+        var s = state.stores.find(function(x){ return x.id === _colorPickerStoreId; });
+        if(!s) return;
+        openGoConfirm(
+          "Remove store?",
+          'Remove store "' + (s.name || "this store") + '"? This will remove it from all items.',
+          function(){
+
+        // Clear store filter if it was active
+        if(typeof activeStoreFilter !== "undefined" && activeStoreFilter === s.id){
+          activeStoreFilter = null;
+        }
+
+        // Remove store and detach from all items
+        state.stores = state.stores.filter(function(x){ return x.id !== s.id; });
+        state.items.forEach(function(it){
+          it.storeIds = (it.storeIds || []).filter(function(id){ return id !== s.id; });
+        });
+
+        save();
+        renderAll();
+        closeStoreColorPicker();
+        toast("Removed");
+          }
+        );
+      }, false);
+    }
+
+
+    // Tap outside sheet to close
+    if(ov && !ov.__hl_bound){
+      ov.__hl_bound = true;
+      ov.addEventListener("click", function(e){
+        if(e.target === ov) closeStoreColorPicker();
+      }, false);
+    }
+      // Type filter (Items page)
+      var tfBtn = document.getElementById("typeFilterBtn");
+      var tfOv = document.getElementById("typeFilterOverlay");
+      var tfClose = document.getElementById("typeFilterClose");
+      if(tfBtn && !tfBtn.__hl_bound){
+        tfBtn.__hl_bound = true;
+        tfBtn.addEventListener("click", function(e){
+          e.preventDefault();
+          openTypeFilter();
+        }, false);
+      }
+      if(tfClose && !tfClose.__hl_bound){
+        tfClose.__hl_bound = true;
+        var closeHandler = function(e){
+          e.preventDefault();
+          e.stopPropagation();
+          closeTypeFilter();
+        };
+        tfClose.addEventListener("click", closeHandler, false);
+        tfClose.addEventListener("touchend", function(e){ e.preventDefault(); closeHandler(e); }, {passive:false});
+        tfClose.addEventListener("pointerup", closeHandler, false);
+        // On some mobile browsers, click can be flaky inside overlays; pointer/touch makes it reliable.
+        tfClose.addEventListener("pointerdown", closeHandler, {passive:false});
+        tfClose.addEventListener("touchstart", closeHandler, {passive:false});
+      }
+      if(tfOv && !tfOv.__hl_bound){
+        tfOv.__hl_bound = true;
+
+        // Click outside the sheet closes it
+        tfOv.addEventListener("click", function(e){
+          if(e.target === tfOv) closeTypeFilter();
+        }, false);
+
+        // ESC key closes it (when open)
+        document.addEventListener("keydown", function(e){
+          if(e.key === "Escape" && tfOv.classList.contains("open")) closeTypeFilter();
+        }, false);
+      }
+
+
+      // Expose type-filter controls for the floating filter button (items page).
+      window.openTypeFilter = openTypeFilter;
+      window.closeTypeFilter = closeTypeFilter;
+      window.typeNameById = typeNameById;
+      window.clearTypeFilter = function(){
+        try{ activeTypeFilter = null; }catch(e){}
+        try{ closeTypeFilter(); }catch(e){}
+        try{ renderItems(); }catch(e){}
+        try{
+          var lbl = document.getElementById("typeFilterLabel");
+          if(lbl) lbl.textContent = typeNameById(activeTypeFilter);
+        }catch(e){}
+      };
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", bind, { once:true });
+  }else{
+    bind();
+  }
+  updateToggleAllLabel();
+})();
+
+
+</script>
+  <div id="tapShield" aria-hidden="true"></div>
+
+  <!-- Store Color Picker -->
+  <div class="overlay colorPicker" id="colorPickerOverlay" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="Choose store color">
+      <div class="sheetHdr">
+        <div class="sheetTitle" id="colorPickerTitle">Choose color</div>
+        <button class="sheetClose" id="colorPickerClose" aria-label="Close">✕</button>
+      </div>
+
+    <div id="storeEditActions" class="sheetActions">
+      <button id="colorPickerRenameBtn" class="miniBtn" type="button">Rename</button>
+      <button id="colorPickerRemoveBtn" class="miniBtn danger" type="button">Remove</button>
+    </div>
+      <div class="sheetSection">
+        <div class="sheetSectionTitle">Background</div>
+        <div class="bgSwatchesSheet" id="bgSwatchesSheet"></div>
+      </div>
+      <div class="sheetSection">
+        <div class="sheetSectionTitle">Store color</div>
+      </div>
+<div class="swatches" id="colorPickerSwatches"></div>
+      <div class="sheetHint muted">Used colors are dimmed.</div>
+    </div>
+  </div>
+
+
+<!-- Type Filter Overlay -->
+<div id="typeFilterOverlay" aria-hidden="true">
+  <div id="typeFilterSheet" role="dialog" aria-modal="true">
+    <div class="typeFilterHeader">
+      <div class="typeFilterTitle">FILTER</div>
+      <button id="typeFilterClose" class="typeFilterClose" type="button" aria-label="Close">×</button>
+    </div>
+    <div id="typeFilterList" class="typeFilterList"></div>
+  </div>
+</div>
+
+<script>
+
+/* === Long-press selection/callout suppression for UI elements (mobile browsers) === */
+(function(){
+  function isTextField(el){
+    return !!(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable));
+  }
+
+  // Block context menu / text selection on UI chrome (but not inside text fields)
+  document.addEventListener('contextmenu', function(e){
+    if (isTextField(e.target)) return;
+    if (e.target.closest && (e.target.closest('.noteModal') || e.target.closest('.itemRow') || e.target.closest('.fab') || e.target.closest('.typeFilterBtn') || e.target.closest('.shareBtn'))){
+      e.preventDefault();
+    }
+  }, {passive:false});
+
+  document.addEventListener('selectstart', function(e){
+    if (isTextField(e.target)) return;
+    if (e.target.closest && (e.target.closest('.noteModal') || e.target.closest('.itemRow'))){
+      e.preventDefault();
+    }
+  });
+
+  // If a long-press begins on non-text UI, clear any accidental selection ranges
+  function clearSelection(){
+    try{
+      var sel = window.getSelection && window.getSelection();
+      if (sel && sel.removeAllRanges) sel.removeAllRanges();
+    }catch(_){}
+  }
+
+  document.addEventListener('touchstart', function(e){
+    if (isTextField(e.target)) return;
+    if (e.target.closest && (e.target.closest('.noteModal') || e.target.closest('.itemRow') || e.target.closest('.fab') || e.target.closest('.typeFilterBtn') || e.target.closest('.shareBtn'))){
+      clearSelection();
+    }
+  }, {passive:true});
+})();
+
+</script>
+<script>
+
+/* === Clear accidental text selection outside editable fields (Android long-press) === */
+(function(){
+  function isEditable(el){
+    if(!el) return false;
+    var t = el.tagName;
+    if (t === 'INPUT' || t === 'TEXTAREA') return true;
+    if (el.isContentEditable) return true;
+    return false;
+  }
+
+  function clearIfNonEditableSelection(){
+    try{
+      var sel = window.getSelection && window.getSelection();
+      if (!sel) return;
+      if (sel.rangeCount === 0) return;
+      // If the active element is editable, allow selection (notes textbox etc.)
+      if (isEditable(document.activeElement)) return;
+      // If selection is collapsed, nothing to do
+      if (sel.isCollapsed) return;
+      // Otherwise clear it (prevents handles/copy bar on long-press UI)
+      if (sel.removeAllRanges) sel.removeAllRanges();
+    }catch(_){}
+  }
+
+  document.addEventListener('selectionchange', clearIfNonEditableSelection, false);
+  // Also clear on overlay open/close interactions (defensive)
+  document.addEventListener('touchend', function(){
+    clearIfNonEditableSelection();
+  }, {passive:true});
+})();
+
+
+window.addEventListener('resize', function(){ if(document.body.classList.contains('tripMode')) updateTripChromeH(); });
+window.addEventListener('orientationchange', function(){ if(document.body.classList.contains('tripMode')) setTimeout(updateTripChromeH, 60); });
+</script>
+</body>
+</html>
+
+
+
